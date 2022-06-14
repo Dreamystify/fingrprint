@@ -4,6 +4,7 @@
   "description": "Scalable almost sequential autoincrementing 64bit id generator",
   "main": "index.js",
   "scripts": {
+    "tsc": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
