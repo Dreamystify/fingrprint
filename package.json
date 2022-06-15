@@ -29,5 +29,9 @@
   "homepage": "https://github.com/Dreamystify/fingrprint#readme",
   "devDependencies": {
     "typescript": "^4.7.3"
+  },
+  "dependencies": {
+    "big-integer": "^1.6.51",
+    "redis": "^4.1.0"
   }
 }
