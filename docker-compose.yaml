@@ -1,0 +1,22 @@
+
+services:
+
+  redis:
+    image: redis:7.0.2
+    command: ["redis-server", "--requirepass passwd"]
+    deploy: 
+      replicas: 1
+      restart_policy: 
+        condition: on-failure
+    ports:
+      - "6389:6379"
+    volumes:
+      - data:/data
+    networks:
+      - redis
+
+networks:
+  redis:
+
+volumes:
+  data:
