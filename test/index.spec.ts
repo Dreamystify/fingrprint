@@ -25,6 +25,17 @@ describe('Fingrprint getIds function', () => {
         await fingrprint.close();
     });
 
+    it('should return an array of bigint without passing args', async () => {
+        const fingrprint: any = new Fingrprint({
+            host: `localhost`,
+            port: 6389,
+        });
+        const ids = await fingrprint.getIds();
+        expect(ids).to.have.lengthOf(1);
+        assert.typeOf(ids[0], 'BigInt');
+        await fingrprint.close();
+    });
+
     it('should fail authentication to redis server', async () => {
         try {
             const fingrprint: any = new Fingrprint({

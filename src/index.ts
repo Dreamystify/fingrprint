@@ -124,7 +124,7 @@ export default class Fingrprint {
     }
 
     async getIds(count: number): Promise<BigInt[]> {
-        let batch: number = count > MAX_BATCH_SIZE ? MAX_BATCH_SIZE : count;
+        let batch: number = (count = count ?? 1) > MAX_BATCH_SIZE ? MAX_BATCH_SIZE : count;
 
         try {
             // check if client is connected
