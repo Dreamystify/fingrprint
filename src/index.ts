@@ -1,6 +1,13 @@
 import bigInteger from 'big-integer';
 import { createClient, defineScript } from 'redis';
 
+type FingrprintConfig = {
+    host?: string
+    port?: number
+    username?: string
+    password?: string
+}
+
 // shard name and id for single use
 const FINGRPRINT_SHARD_ID_KEY = `fingrprint-generator-logical-shard-id`;
 const FINGRPRINT_SHARD_ID = 1;
@@ -23,18 +30,18 @@ const ONE_MILLI_IN_MICRO_SECS = 1000; // TimeUnit.MICROSECONDS.convert(1, TimeUn
 
 // class attempt
 export default class Fingrprint {
-
     #client;
     #host;
     #port;
     #password;
     #username;
 
-    constructor(host: string, port: number, username: string, password: string) {
-        this.#host = host;
-        this.#port = port;
-        this.#password = password;
-        this.#username = username;
+    constructor(options?: FingrprintConfig) {
+        options = options || {};
+        this.#host = options.host || `localhost`;
+        this.#port = options.port || 6389;
+        this.#password = options.password;
+        this.#username = options.username;
         this.#client = createClient({
             socket: {
                 host: this.#host, 
