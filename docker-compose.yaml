@@ -3,7 +3,8 @@ services:
 
   redis:
     image: redis:7.0.2
-    command: ["redis-server", "--requirepass passwd"]
+    #command: ["redis-server", "--requirepass passwd"]
+    command: ["redis-server"]
     deploy: 
       replicas: 1
       restart_policy: 
