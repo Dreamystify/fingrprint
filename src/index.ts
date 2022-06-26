@@ -123,7 +123,7 @@ export default class Fingrprint {
         }
     }
 
-    async getIds(count: number): Promise<BigInt[]> {
+    async getIds(count?: number): Promise<BigInt[]> {
         let batch: number = (count = count ?? 1) > MAX_BATCH_SIZE ? MAX_BATCH_SIZE : count;
 
         try {
@@ -182,6 +182,11 @@ export default class Fingrprint {
                 throw err;
             }
         }
+    }
+
+    async getId(): Promise<BigInt> {
+        const [id] = await this.getIds();
+        return id;
     }
 
     async close() {
