@@ -47,10 +47,7 @@ export default class Fingrprint {
                 host: this.#host, 
                 port: this.#port,
                 reconnectStrategy: (retries: number) => {
-                    //if (retries > 3) {
-                        return new Error("Retry time exhausted");
-                    //}
-                    //return Math.min(retries * 50, 500);
+                    return Math.min(retries * 50, 500);
                 }
             },
             username: this.#username,
