@@ -40,7 +40,7 @@ describe('Fingrprint', () => {
             const ids = await fingrprint.getIds(1);
         } catch(e) {
             if (e instanceof Error) {
-                expect(e.message).to.equal('getaddrinfo ENOTFOUND local');
+                expect(e.message).to.be.oneOf(['getaddrinfo ENOTFOUND local', 'getaddrinfo EAI_AGAIN local']);
             }
         }
     });
