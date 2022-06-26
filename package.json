@@ -19,7 +19,7 @@
     "url": "git+https://github.com/Dreamystify/fingrprint.git"
   },
   "keywords": [
-    "autoincrement",
+    "k-sortable",
     "id",
     "generator",
     "bigint"
