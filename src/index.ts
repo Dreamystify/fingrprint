@@ -9,8 +9,8 @@ type FingrprintConfig = {
 }
 
 // shard name and id for single use
-const FINGRPRINT_SHARD_ID_KEY = `fingrprint-generator-logical-shard-id`;
-const FINGRPRINT_SHARD_ID = 1;
+const FINGRPRINT_SHARD_ID_KEY = process.env.FINGRPRINT_SHARD_ID_KEY || `fingrprint-shard-id`;
+const FINGRPRINT_SHARD_ID = process.env.FINGRPRINT_SHARD_ID || 1;
 
 // We specify an custom epoch that we will use to fit our timestamps within the bounds of the 41 bits we have
 // available. This gives us a range of ~69 years within which we can generate IDs.
@@ -58,7 +58,7 @@ export default class Fingrprint {
                     SCRIPT: 
                         `local lock_key = 'fingrprint-generator-lock'
                         local sequence_key = 'fingrprint-generator-sequence'
-                        local logical_shard_id_key = 'fingrprint-generator-logical-shard-id'
+                        local logical_shard_id_key = 'fingrprint-shard-id'
         
                         local max_sequence = tonumber(ARGV[1])
                         local min_logical_shard_id = tonumber(ARGV[2])
