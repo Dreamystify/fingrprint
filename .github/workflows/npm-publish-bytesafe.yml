@@ -50,7 +50,8 @@ jobs:
       - id: publish
         uses: JS-DevTools/npm-publish@v1
         with:
-          token: ${{ secrets.BYTESAFE_TOKEN }}
+          registry: 'https://dreamystify.bytesafe.dev/r/npm/'
+          token: ${{secrets.BYTESAFE_TOKEN}}
           access: restricted
           check-version: true
       - if: steps.publish.outputs.type != 'none'
