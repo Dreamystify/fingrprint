@@ -46,10 +46,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm ci --ignore-scripts
-        env:
-          BYTESAFE_TOKEN: ${{secrets.BYTESAFE_TOKEN}}
-          NPM_TOKEN: ${{secrets.NPM_TOKEN}}
       - name: Setup NPMrc for JS-DevTools
         run: echo "//dreamystify.bytesafe.dev/r/npm/:_authToken=${{secrets.BYTESAFE_TOKEN}}" >> .npmrc
       - id: publish
