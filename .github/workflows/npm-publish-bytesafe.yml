@@ -50,6 +50,8 @@ jobs:
         env:
           BYTESAFE_TOKEN: ${{secrets.BYTESAFE_TOKEN}}
           NPM_TOKEN: ${{secrets.NPM_TOKEN}}
+      - name: Setup NPMrc for JS-DevTools
+        run: echo "//dreamystify.bytesafe.dev/r/npm/:_authToken=${{secrets.BYTESAFE_TOKEN}}" >> .npmrc
       - id: publish
         uses: JS-DevTools/npm-publish@v1
         with:
