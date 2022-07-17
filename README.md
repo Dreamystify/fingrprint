@@ -34,17 +34,16 @@ const fingrprint = new Fingrprint({
 And to use it,
 
 ```js
-const ids = fingrprint.getId();
+const id = await fingrprint.getId();
 // 6936951099534350941n
 
-const ids = fingrprint.getIds();
+const ids = await fingrprint.getIds(); // defaults to 1
 // [6936951099534350941n]
 
-const ids = fingrprint.getIds(3);
+const ids = await fingrprint.getIds(3);
 // [6936951099534350941n, 6936951099534350942n, 6936951099534350943n]
 ```
 
 # Kudos
 
 The project was inspired by [Icicle](https://github.com/intenthq/icicle), just setup for node.js.
-
