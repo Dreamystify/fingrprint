@@ -1,7 +1,7 @@
 {
   "name": "@dreamystify/fingrprint",
   "version": "0.1.0",
-  "description": "Scalable almost sequential autoincrementing 64bit id generator",
+  "description": "A distributed, k-sortable unique ID generation system using Redis and Lua, inspired by Icicle.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "files": [
