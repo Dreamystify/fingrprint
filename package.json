@@ -1,6 +1,6 @@
 {
   "name": "@dreamystify/fingrprint",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "description": "Scalable almost sequential autoincrementing 64bit id generator",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
