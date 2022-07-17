@@ -7,9 +7,6 @@
   "files": [
     "lib/**/*"
   ],
-  "publishConfig": {
-    "registry": "https://dreamystify.bytesafe.dev/r/npm/"
-  },
   "scripts": {
     "tsc": "tsc",
     "test": "mocha -r ts-node/register test/**/*.spec.ts --timeout 50000"
