@@ -28,7 +28,6 @@ const MAX_SEQUENCE = ~(-1 << SEQUENCE_BITS),
 const MAX_BATCH_SIZE = MAX_SEQUENCE + 1;
 const ONE_MILLI_IN_MICRO_SECS = 1000; // TimeUnit.MICROSECONDS.convert(1, TimeUnit.MILLISECONDS);
 
-// class attempt
 export default class Fingrprint {
     #client;
     #host;
