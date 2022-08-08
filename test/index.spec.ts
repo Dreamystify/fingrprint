@@ -14,6 +14,21 @@ describe('Fingrprint', () => {
         await fingrprint.close();
     });
 
+    it('should use custom values and connect to redis server', async () => {
+        const config = {
+            host: `localhost`,
+            port: 6389,
+            username: `default`,
+            password: `fingrprint`
+        };
+        const fingrprint: any = new Fingrprint(config);
+        const ids = await fingrprint.getIds(1);
+        expect(fingrprint.toString()).to.be.equal(`Host: ${config.host}, Port: ${config.port}, Username: ${config.username}, Password: ${config.port}`)
+        expect(ids).to.have.lengthOf(1);
+        assert.typeOf(ids[0], 'BigInt');
+        await fingrprint.close();
+    });
+
     it('should fail authentication to redis server', async () => {
         try {
             const fingrprint: any = new Fingrprint({
