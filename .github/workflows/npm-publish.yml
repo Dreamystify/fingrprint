@@ -45,7 +45,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm compile
+      - run: npm run compile
       - id: publish
         uses: JS-DevTools/npm-publish@v1
         with:
