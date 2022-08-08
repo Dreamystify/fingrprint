@@ -23,7 +23,7 @@ describe('Fingrprint', () => {
         };
         const fingrprint: any = new Fingrprint(config);
         const ids = await fingrprint.getIds(1);
-        expect(fingrprint.toString()).to.be.equal(`Host: ${config.host}, Port: ${config.port}, Username: ${config.username}, Password: ${config.port}`)
+        expect(fingrprint.toString()).to.be.equal(`Host: ${config.host}, Port: ${config.port}, Username: ${config.username}, Password: ${config.password}`)
         expect(ids).to.have.lengthOf(1);
         assert.typeOf(ids[0], 'BigInt');
         await fingrprint.close();

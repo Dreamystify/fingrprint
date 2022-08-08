@@ -192,6 +192,6 @@ export default class Fingrprint {
     }
 
     toString() {
-        return `Host: ${this.#host}, Port: ${this.#port}, Username: ${this.#username}, Password: ${this.#port}`
+        return `Host: ${this.#host}, Port: ${this.#port}, Username: ${this.#username}, Password: ${this.#password}`
     }
 }
