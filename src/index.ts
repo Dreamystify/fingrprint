@@ -1,12 +1,12 @@
 import bigInteger from 'big-integer';
 import { createClient, defineScript } from 'redis';
 
-type FingrprintConfig = {
-    host?: string
-    port?: number
-    username?: string
-    password?: string
-}
+type FingrprintConfig = Partial<{
+    host: string
+    port: number
+    username: string
+    password: string
+}>
 
 // shard name and id for single use
 const FINGRPRINT_SHARD_ID_KEY = process.env.FINGRPRINT_SHARD_ID_KEY || `fingrprint-shard-id`;
@@ -32,15 +32,15 @@ export default class Fingrprint {
     #client;
     #host;
     #port;
-    #password;
     #username;
+    #password;
 
     constructor(options?: FingrprintConfig) {
         options = options || {};
         this.#host = options.host || `localhost`;
         this.#port = options.port || 6389;
-        this.#password = options.password;
-        this.#username = options.username;
+        this.#username = options.username || `default`;
+        this.#password = options.password || `fingrprint`;
         this.#client = createClient({
             socket: {
                 host: this.#host, 
@@ -189,5 +189,9 @@ export default class Fingrprint {
         if(this.#client != undefined) {
             await this.#client.quit();
         }
+    }
+
+    toString() {
+        return `Host: ${this.#host}, Port: ${this.#port}, Username: ${this.#username}, Password: ${this.#port}`
     }
 }
