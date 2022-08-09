@@ -18,7 +18,7 @@ Fingrprint is a node module to generate 64-bit, k-sortable unique IDs in a distr
 
 **Prerequisites**
 
-* Node.js v12+
+* Node.js v14+
 * Redis v6+
 
 # Installation
