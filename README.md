@@ -14,12 +14,23 @@
 
 Fingrprint is a node module to generate 64-bit, k-sortable unique IDs in a distributed fashion by using Redis' Lua scripting, and javascripts new BigInt numeric type
 
-# Installation
+# Getting started
 
-For Node
+**Prerequisites**
+
+* Node.js v12+
+* Redis v6+
+
+# Installation
 
 ```js
 npm install @dreamystify/fingrprint
+```
+
+To build the package locally with the TypeScript compiler, run:
+
+```js
+npm run compile
 ```
 
 # Usage
