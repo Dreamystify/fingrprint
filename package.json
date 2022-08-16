@@ -15,7 +15,7 @@
     "compile": "npm run clean && tsc -p .",
     "watch": "tsc -w -p .",
     "clean": "rm -rf lib",
-    "test": "mocha -r ts-node/register test/**/*.spec.ts --timeout 50000"
+    "test": "mocha -r ts-node/register tests/**/*.spec.ts --timeout 50000"
   },
   "repository": {
     "type": "git",

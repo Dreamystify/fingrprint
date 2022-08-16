@@ -32,7 +32,7 @@
     // "paths": {},                                      /* Specify a set of entries that re-map imports to additional lookup locations. */
     "rootDirs": [
       "./src",
-      "./test"
+      "tests"
     ],                                   /* Allow multiple folders to be treated as one when resolving modules. */
     // "typeRoots": [],                                  /* Specify multiple folders that act like './node_modules/@types'. */
     // "types": [],                                      /* Specify type package names to be included without being referenced in a source file. */
@@ -105,9 +105,9 @@
   },
   "include": [
     "src/**/*",
-    "test/index.spec.ts"  
+    "tests/index.spec.ts"  
   ],
   "exclude": [
-    "test/**/*",
+    "tests/**/*",
   ]
 }
