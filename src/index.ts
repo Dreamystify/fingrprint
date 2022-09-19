@@ -46,12 +46,6 @@ export default class Fingrprint {
             socket: {
                 host: this.#host, 
                 port: this.#port,
-                reconnectStrategy: (retries: number) => {
-                    //if (retries > 3) {
-                        return new Error("Retry time exhausted");
-                    //}
-                    //return Math.min(retries * 50, 500);
-                }
             },
             username: this.#username,
             password: this.#password,
@@ -123,7 +117,7 @@ export default class Fingrprint {
         }
     }
 
-    async getIds(count: number): Promise<BigInt[]> {
+    async getIds(count?: number): Promise<BigInt[]> {
         let batch: number = (count = count ?? 1) > MAX_BATCH_SIZE ? MAX_BATCH_SIZE : count;
 
         try {
@@ -182,6 +176,11 @@ export default class Fingrprint {
                 throw err;
             }
         }
+    }
+
+    async getId(): Promise<BigInt> {
+        const [id] = await this.getIds();
+        return id;
     }
 
     async close() {
