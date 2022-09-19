@@ -4,33 +4,11 @@ import 'mocha';
 
 chai.use(require('chai-as-promised'));
 
-describe('Fingrprint getIds function', () => {
+describe('Fingrprint', () => {
 
     it('should use default values and connect to redis server', async () => {
         const fingrprint: any = new Fingrprint();
         const ids = await fingrprint.getIds(1);
-        expect(ids).to.have.lengthOf(1);
-        assert.typeOf(ids[0], 'BigInt');
-        await fingrprint.close();
-    });
-
-    it('should return an array of bigint', async () => {
-        const fingrprint: any = new Fingrprint({
-            host: `localhost`,
-            port: 6389,
-        });
-        const ids = await fingrprint.getIds(1);
-        expect(ids).to.have.lengthOf(1);
-        assert.typeOf(ids[0], 'BigInt');
-        await fingrprint.close();
-    });
-
-    it('should return an array of bigint without passing args', async () => {
-        const fingrprint: any = new Fingrprint({
-            host: `localhost`,
-            port: 6389,
-        });
-        const ids = await fingrprint.getIds();
         expect(ids).to.have.lengthOf(1);
         assert.typeOf(ids[0], 'BigInt');
         await fingrprint.close();
@@ -65,5 +43,35 @@ describe('Fingrprint getIds function', () => {
                 expect(e.message).to.equal('getaddrinfo ENOTFOUND local');
             }
         }
+    });
+});
+
+describe('getId function', () => {
+
+    it('should return a bigint id', async () => {
+        const fingrprint: any = new Fingrprint({
+            host: `localhost`,
+            port: 6389,
+        });
+        const id = await fingrprint.getId();
+        assert.typeOf(id, 'BigInt');
+        await fingrprint.close();
+    });
+});
+
+describe('getIds function', () => {
+
+    it('should return an array of bigint', async () => {
+        const fingrprint: any = new Fingrprint({
+            host: `localhost`,
+            port: 6389,
+        });
+        const count = 5;
+        const ids = await fingrprint.getIds(count);
+        expect(ids).to.have.lengthOf(count);
+        for (const id of ids) {
+            assert.typeOf(id, 'BigInt');
+        }
+        await fingrprint.close();
     });
 });
