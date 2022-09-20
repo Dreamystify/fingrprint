@@ -1,16 +1,16 @@
 import bigInteger from 'big-integer';
 import { createClient, defineScript } from 'redis';
 
-type FingrprintConfig = {
-    host?: string
-    port?: number
-    username?: string
-    password?: string
-}
+type FingrprintConfig = Partial<{
+    host: string
+    port: number
+    username: string
+    password: string
+}>
 
 // shard name and id for single use
-const FINGRPRINT_SHARD_ID_KEY = `fingrprint-generator-logical-shard-id`;
-const FINGRPRINT_SHARD_ID = 1;
+const FINGRPRINT_SHARD_ID_KEY = process.env.FINGRPRINT_SHARD_ID_KEY || `fingrprint-shard-id`;
+const FINGRPRINT_SHARD_ID = process.env.FINGRPRINT_SHARD_ID || 1;
 
 // We specify an custom epoch that we will use to fit our timestamps within the bounds of the 41 bits we have
 // available. This gives us a range of ~69 years within which we can generate IDs.
@@ -28,24 +28,26 @@ const MAX_SEQUENCE = ~(-1 << SEQUENCE_BITS),
 const MAX_BATCH_SIZE = MAX_SEQUENCE + 1;
 const ONE_MILLI_IN_MICRO_SECS = 1000; // TimeUnit.MICROSECONDS.convert(1, TimeUnit.MILLISECONDS);
 
-// class attempt
 export default class Fingrprint {
     #client;
     #host;
     #port;
-    #password;
     #username;
+    #password;
 
     constructor(options?: FingrprintConfig) {
         options = options || {};
         this.#host = options.host || `localhost`;
         this.#port = options.port || 6389;
-        this.#password = options.password;
-        this.#username = options.username;
+        this.#username = options.username || `default`;
+        this.#password = options.password || `fingrprint`;
         this.#client = createClient({
             socket: {
                 host: this.#host, 
                 port: this.#port,
+                reconnectStrategy: (retries: number) => {
+                    return Math.min(retries * 50, 500);
+                }
             },
             username: this.#username,
             password: this.#password,
@@ -55,7 +57,7 @@ export default class Fingrprint {
                     SCRIPT: 
                         `local lock_key = 'fingrprint-generator-lock'
                         local sequence_key = 'fingrprint-generator-sequence'
-                        local logical_shard_id_key = 'fingrprint-generator-logical-shard-id'
+                        local logical_shard_id_key = 'fingrprint-shard-id'
         
                         local max_sequence = tonumber(ARGV[1])
                         local min_logical_shard_id = tonumber(ARGV[2])
@@ -187,5 +189,9 @@ export default class Fingrprint {
         if(this.#client != undefined) {
             await this.#client.quit();
         }
+    }
+
+    toString() {
+        return `Host: ${this.#host}, Port: ${this.#port}, Username: ${this.#username}, Password: ${this.#password}`
     }
 }
