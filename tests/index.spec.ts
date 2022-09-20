@@ -59,34 +59,34 @@ describe('Fingrprint', () => {
             }
         }
     });
-});
 
-describe('getId function', () => {
+    describe('getId function', () => {
 
-    it('should return a bigint id', async () => {
-        const fingrprint: any = new Fingrprint({
-            host: `localhost`,
-            port: 6389,
-        });
-        const id = await fingrprint.getId();
-        assert.typeOf(id, 'BigInt');
-        await fingrprint.close();
-    });
-});
-
-describe('getIds function', () => {
-
-    it('should return an array of bigint', async () => {
-        const fingrprint: any = new Fingrprint({
-            host: `localhost`,
-            port: 6389,
-        });
-        const count = 5;
-        const ids = await fingrprint.getIds(count);
-        expect(ids).to.have.lengthOf(count);
-        for (const id of ids) {
+        it('should return a bigint id', async () => {
+            const fingrprint: any = new Fingrprint({
+                host: `localhost`,
+                port: 6389,
+            });
+            const id = await fingrprint.getId();
             assert.typeOf(id, 'BigInt');
-        }
-        await fingrprint.close();
+            await fingrprint.close();
+        });
+    });
+    
+    describe('getIds function', () => {
+    
+        it('should return an array of bigint', async () => {
+            const fingrprint: any = new Fingrprint({
+                host: `localhost`,
+                port: 6389,
+            });
+            const count = 5;
+            const ids = await fingrprint.getIds(count);
+            expect(ids).to.have.lengthOf(count);
+            for (const id of ids) {
+                assert.typeOf(id, 'BigInt');
+            }
+            await fingrprint.close();
+        });
     });
 });
