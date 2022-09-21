@@ -28,7 +28,6 @@ jobs:
           redis-port: 6389
           redis-container-name: redis
       - run: npm ci --ignore-scripts
-      - run: npm run build
       - run: npm test 
         env:
           NPM_TOKEN: ${{secrets.NPM_TOKEN}}
@@ -55,6 +54,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
+      - run: npm ci
       - run: npm run coverage
       - uses: codecov/codecov-action@v3
         with:
