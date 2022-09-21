@@ -7,8 +7,8 @@ on:
     branches: [ main ]
 
 jobs:
-  build-test:
-    name: Build and test codebase
+  build-test-coverage:
+    name: Build test and coverage codebase
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -31,6 +31,12 @@ jobs:
       - run: npm test 
         env:
           NPM_TOKEN: ${{secrets.NPM_TOKEN}}
+      - run: npm run coverage
+      - uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: ./coverage/
+          fail_ci_if_error: true
       - name: Report Status
         if: always()
         uses: ravsamhq/notify-slack-action@v1
@@ -39,28 +45,6 @@ jobs:
           notify_when: 'failure'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
-
-  coverage:
-    name: Upload coverage to codecov
-    needs: build-test
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18.x]
-    steps:
-      - name: Git checkout
-        uses: actions/checkout@v3
-      - name: Using Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-      - run: npm ci
-      - run: npm run coverage
-      - uses: codecov/codecov-action@v3
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          directory: ./coverage/
-          fail_ci_if_error: true
 
   publish:
     name: Publish to Npm
