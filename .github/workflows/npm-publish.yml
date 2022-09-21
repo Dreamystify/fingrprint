@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         node-version: [18.x]
-        redis-version: [7.0.x]
+        redis-version: [7]
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
