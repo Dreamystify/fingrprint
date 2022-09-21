@@ -48,7 +48,7 @@ jobs:
 
   publish:
     name: Publish to Npm
-    needs: build-test
+    needs: build-test-coverage
     runs-on: ubuntu-latest
     strategy:
       matrix:
