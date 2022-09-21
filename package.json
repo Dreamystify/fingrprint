@@ -16,7 +16,7 @@
     "watch": "tsc -w -p .",
     "clean": "rm -rf lib",
     "test": "npm run build && mocha -r ts-node/register/transpile-only -r source-map-support/register  --recursive tests/**/*.spec.ts --timeout 50000",
-    "coverage": "nyc --reporter=lcov --reporter=text-summary npm run test"
+    "coverage": "npm run build && nyc --reporter=lcov --reporter=text-summary npm run test"
   },
   "repository": {
     "type": "git",
