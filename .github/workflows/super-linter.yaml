@@ -1,4 +1,4 @@
-name: Fingrprint Super Linter
+name: Lint Code Base
 
 on: 
   push:
@@ -14,6 +14,8 @@ jobs:
       - name: Git checkout
         uses: actions/checkout@v3
       - name: Run Super-linter
-        uses: github/superlinter@v3
+        uses: github/super-linter@v4
         env: 
+          VALIDATE_ALL_CODEBASE: false
           DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
