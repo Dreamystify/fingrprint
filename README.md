@@ -10,8 +10,11 @@
   <a href="https://badge.fury.io/js/@dreamystify%2Ffingrprint"><img src="https://badge.fury.io/js/@dreamystify%2Ffingrprint.svg" alt="npm version" height="18"></a>
   <img src="https://github.com/Dreamystify/fingrprint/actions/workflows/npm-publish.yml/badge.svg" alt="npm version" height="18">
   <a href='https://coveralls.io/github/Dreamystify/fingrprint?branch=main'><img src='https://coveralls.io/repos/github/Dreamystify/fingrprint/badge.svg?branch=main' alt='Coverage Status' height="18"/></a>
+
   </p>
 </div>
+
+[![GitHub Super-Linter](https://github.com/Dreamystify/fingrprint/workflows/Lint%20Code%20Base/badge.svg)](https://github.com/marketplace/actions/super-linter)
 
 Fingrprint is a node module to generate 64-bit, k-sortable unique IDs in a distributed fashion by using Redis' Lua scripting, and javascripts new BigInt numeric type
 
