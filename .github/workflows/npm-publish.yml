@@ -1,23 +1,23 @@
-# This workflow will run tests using node and then publish a package to GitHub Packages when a release is created
-# For more information see: https://help.github.com/actions/language-and-framework-guides/publishing-nodejs-packages
-
-name: Fingrprint Npm Package
+name: Fingrprint Publish Npm Package
 
 on: 
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  build:
+  build-test:
+    name: Build and test codebase
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18]
-        redis-version: [7]
+        node-version: [18.x]
+        redis-version: [7.0.x]
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Using Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
@@ -28,6 +28,7 @@ jobs:
           redis-port: 6389
           redis-container-name: redis
       - run: npm ci --ignore-scripts
+      - run: npm run build
       - run: npm test 
         env:
           NPM_TOKEN: ${{secrets.NPM_TOKEN}}
@@ -40,16 +41,17 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
 
-  publish: 
-    needs: build
+  publish:
+    name: Publish to Npm
+    needs: build-test
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18]
+        node-version: [18.x]
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Using Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
