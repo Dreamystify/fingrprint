@@ -1,4 +1,4 @@
-name: Fingrprint Publish Npm Package
+name: Publish Npm Package
 
 on: 
   push:
