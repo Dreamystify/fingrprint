@@ -15,8 +15,8 @@
     "build": "npm run clean && tsc -p .",
     "watch": "tsc -w -p .",
     "clean": "rm -rf lib",
-    "test": "npm run build && mocha -r ts-node/register/transpile-only -r source-map-support/register  --recursive tests/**/*.spec.ts --timeout 50000",
-    "coverage": "npm run build && nyc --reporter=lcov --reporter=text-summary npm run test"
+    "test": "npm run build && nyc --reporter=lcov mocha -r ts-node/register/transpile-only -r source-map-support/register  --recursive tests/**/*.spec.ts --timeout 50000",
+    "coverage": "codecov"
   },
   "repository": {
     "type": "git",
@@ -41,6 +41,7 @@
     "@types/mocha": "^9.1.1",
     "chai": "^4.3.6",
     "chai-as-promised": "^7.1.1",
+    "codecov": "^3.8.3",
     "mocha": "^10.0.0",
     "nyc": "^15.1.0",
     "source-map-support": "^0.5.21",
