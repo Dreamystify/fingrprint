@@ -39,9 +39,9 @@ describe('Fingrprint', () => {
             });
             const ids = await fingrprint.getIds(1);
             await fingrprint.close();
-        } catch(e) {
-            if (e instanceof Error) {
-                expect(e.message).to.equal('WRONGPASS invalid username-password pair or user is disabled.');
+        } catch(err) {
+            if (err instanceof Error) {
+                expect(err.message).to.equal('WRONGPASS invalid username-password pair or user is disabled.');
             }
         }
     });
@@ -53,9 +53,9 @@ describe('Fingrprint', () => {
                 port: 8888,
             });
             const ids = await fingrprint.getIds(1);
-        } catch(e) {
-            if (e instanceof Error) {
-                expect(e.message).to.be.oneOf(['getaddrinfo ENOTFOUND local', 'getaddrinfo EAI_AGAIN local']);
+        } catch(err) {
+            if (err instanceof Error) {
+                expect(err.message).to.be.oneOf(['getaddrinfo ENOTFOUND local', 'getaddrinfo EAI_AGAIN local']);
             }
         }
     });
@@ -74,9 +74,9 @@ describe('Fingrprint', () => {
     });
     
     describe('getIds function', () => {
-    
+      
         it('should return an array of bigint', async () => {
-            const fingrprint: any = new Fingrprint({
+            const fingrprint = new Fingrprint({
                 host: `localhost`,
                 port: 6389,
             });
@@ -87,6 +87,21 @@ describe('Fingrprint', () => {
                 assert.typeOf(id, 'BigInt');
             }
             await fingrprint.close();
+        });
+
+        it('should handle redis connection errors', async () => {
+            const fingrprint = new Fingrprint({
+                host: `localhost`,
+                port: 6389,
+            });
+            try {
+                const count = 5;
+                const ids = await fingrprint.getIds(2);
+            } catch(err) {
+                expect(err.message).to.equal('redis connection issue');
+            } finally {
+                await fingrprint.close();
+            }
         });
     });
 });
