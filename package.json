@@ -15,7 +15,7 @@
     "build": "npm run clean && tsc -p .",
     "watch": "tsc -w -p .",
     "clean": "rm -rf lib",
-    "test": "npm run build && docker-compose up -d && nyc --reporter=lcov --reporter=text mocha -r ts-node/register/transpile-only -r source-map-support/register --recursive tests/**/*.spec.ts --timeout 50000 && docker-compose down",
+    "test": "npm run build && nyc --reporter=lcov --reporter=text mocha -r ts-node/register/transpile-only -r source-map-support/register --recursive tests/**/*.spec.ts --timeout 50000",
     "coverage": "codecov"
   },
   "repository": {
