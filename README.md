@@ -14,10 +14,6 @@
   </p>
 </div>
 
-[![GitHub Super-Linter](https://github.com/Dreamystify/fingrprint/workflows/Lint%20Code%20Base/badge.svg)](https://github.com/marketplace/actions/super-linter)
-
-Fingrprint is a node module to generate 64-bit, k-sortable unique IDs in a distributed fashion by using Redis' Lua scripting, and javascripts new BigInt numeric type
-
 # Getting started
 
 **Prerequisites**
