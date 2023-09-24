@@ -21,6 +21,11 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
+      - name: Setup npmrc for Npm
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+          echo "@dreamystify:registry=https://registry.npmjs.org" >> .npmrc
+          echo "always-auth=true" >> .npmrc
       - name: Start Redis
         uses: supercharge/redis-github-action@1.4.0
         with:
@@ -44,7 +49,7 @@ jobs:
           status: ${{ job.status }}
           notify_when: 'failure'
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.DREAMYSTIFY_SLACK_BOT_PACKAGES }}
 
   publish:
     name: Publish to Npm
@@ -60,6 +65,11 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
+      - name: Setup npmrc for Npm
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+          echo "@dreamystify:registry=https://registry.npmjs.org" >> .npmrc
+          echo "always-auth=true" >> .npmrc
       - run: npm ci
       - run: npm run build
       - id: publish
@@ -76,4 +86,4 @@ jobs:
         with:
           status: ${{ job.status }}
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.DREAMYSTIFY_SLACK_BOT_PACKAGES }}
