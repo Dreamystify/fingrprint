@@ -119,9 +119,8 @@ export default class Fingrprint {
         }
     }
 
-    async getIds(count?: number): Promise<BigInt[]> {
-        let batch: number = (count = count ?? 1) > MAX_BATCH_SIZE ? MAX_BATCH_SIZE : count;
-
+    async getIds(count?: number): Promise<bigint[]> {
+        let batch: number = (count = count !== undefined ? Math.abs(count) : 1) > MAX_BATCH_SIZE ? MAX_BATCH_SIZE : count;
         try {
             // check if client is connected
             if (!this.#client.isOpen) await this.#init();
@@ -142,7 +141,7 @@ export default class Fingrprint {
             let timestamp = Math.trunc((TIME_SECONDS * ONE_MILLI_IN_MICRO_SECS) + (TIME_MICROSECONDS / ONE_MILLI_IN_MICRO_SECS));
 
             // loop through the sequences to create the batch ids
-            let ids: BigInt[] = [];
+            let ids: bigint[] = [];
             for (let i = START_SEQUENCE; i <= END_SEQUENCE; i++) {
 
                 // Here's the fun bit-shifting. The purpose of this is to get a 64-bit ID of the following
@@ -160,35 +159,24 @@ export default class Fingrprint {
                 let id = bigInteger((timestamp - CUSTOM_EPOCH)).shiftLeft(TIMESTAMP_SHIFT).or(bigInteger(LOGICAL_SHARD_ID).shiftLeft(LOGICAL_SHARD_ID_SHIFT)).or(i).toString();
 
                 // add id to list of ids
-                ids.push(BigInt(id));
+                ids.push(BigInt(id).valueOf());
             }
-            //throw new Error(`The connection is: ${this.#client.isOpen}`);
+            // throw new Error(`The connection is: ${this.#client.isOpen}`);
             // return the batch of ids array
             return ids;
         } 
         catch (err) {
-            if(err instanceof Error) {
-                // IDE type hinting now available
-                if (err.message == `redis connection issue`) {
-                    throw new Error(`Error connecting to redis server`);
-                }
-
-                throw err;
-            } else {
-                throw err;
-            }
+            throw err;
         }
     }
 
-    async getId(): Promise<BigInt> {
+    async getId(): Promise<bigint> {
         const [id] = await this.getIds();
         return id;
     }
 
     async close() {
-        if(this.#client != undefined) {
-            await this.#client.quit();
-        }
+        if(this.#client != undefined) await this.#client.quit();
     }
 
     toString() {
