@@ -161,7 +161,6 @@ export default class Fingrprint {
                 // add id to list of ids
                 ids.push(BigInt(id).valueOf());
             }
-            // throw new Error(`The connection is: ${this.#client.isOpen}`);
             // return the batch of ids array
             return ids;
         } 
