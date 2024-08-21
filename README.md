@@ -8,7 +8,6 @@
   </p>
   <p>
   <a href="https://badge.fury.io/js/@dreamystify%2Ffingrprint"><img src="https://badge.fury.io/js/@dreamystify%2Ffingrprint.svg" alt="npm version" height="18"></a>
-  <img src="https://github.com/Dreamystify/fingrprint/actions/workflows/npm-publish.yml/badge.svg" alt="npm version" height="18">
   <a href='https://coveralls.io/github/Dreamystify/fingrprint?branch=main'><img src='https://coveralls.io/repos/github/Dreamystify/fingrprint/badge.svg?branch=main' alt='Coverage Status' height="18"/></a>
 
   </p>
@@ -18,7 +17,7 @@
 
 **Prerequisites**
 
-* Node.js v14+
+* Node.js v18+
 * Redis v6+
 
 # Installation
