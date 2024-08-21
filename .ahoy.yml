@@ -1,0 +1,19 @@
+ahoyapi: v2
+commands:
+  major:
+    usage: Increment the major version.
+    cmd: |
+      npm version major
+      git push origin main --follow-tags
+
+  minor:
+    usage: Increment the minor version.
+    cmd: |
+      npm version minor
+      git push origin main --follow-tags
+
+  patch:
+    usage: Increment the patch version
+    cmd: |
+      npm version patch
+      git push origin main --follow-tags
