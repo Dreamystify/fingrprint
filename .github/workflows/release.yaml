@@ -35,6 +35,7 @@ jobs:
     strategy:
       matrix:
         node-version: [18.x, 20.x]
+        redis-version: [7]
     steps:
       - name: Start Redis
         uses: supercharge/redis-github-action@1.4.0
