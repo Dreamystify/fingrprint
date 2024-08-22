@@ -73,7 +73,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: 20.x
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -95,4 +95,3 @@ jobs:
           notify_when: 'failure'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.DREAMYSTIFY_SLACK_BOT_PACKAGES }}
-
