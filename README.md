@@ -20,6 +20,11 @@
 * Node.js v18+
 * Redis v6+
 
+```sh
+# Initialize the repo
+./.scripts/init.sh
+```
+
 # Installation
 
 ```js
