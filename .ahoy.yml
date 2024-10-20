@@ -17,3 +17,18 @@ commands:
     cmd: |
       npm version patch
       git push origin main --follow-tags
+
+  clean:
+    usage: Cleans files and folders
+    cmd: |
+      # Import functions
+      source ./.scripts/utils/gum.sh
+      
+      # Clear the coverage folders
+      gum_spin "Running npm clean script..." rm -rf .nyc_output coverage
+
+      # Run the npm clean script
+      gum_spin "Running npm clean script..." npm run clean
+
+      # Clean the npm_modules folder
+      gum_spin "Clearing the npm modules folder..." rm -rf node_modules
