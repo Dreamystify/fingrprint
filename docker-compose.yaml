@@ -3,7 +3,7 @@ services:
 
   redis:
     image: redis:7.0.2
-    command: redis-server --requirepass fingrprint
+    command: redis-server --requirepass fingrprint --timeout 5
     deploy: 
       replicas: 1
       restart_policy: 
