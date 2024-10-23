@@ -18,4 +18,10 @@ if ! command -v gum /dev/null 2>&1; then
   brew install gum
 fi
 
+# Check if Act is installed
+if ! command -v act /dev/null 2>&1; then
+  echo "Installing Act..."
+  brew install act
+fi
+
 echo "Repository Initialized!"
