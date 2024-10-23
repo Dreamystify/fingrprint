@@ -32,3 +32,13 @@ commands:
 
       # Clean the npm_modules folder
       gum_spin "Clearing the npm modules folder..." rm -rf node_modules
+
+  workflow:
+    usage: Tests the github publish workflow
+    cmd: |
+      set -a
+      [ -f .env ] && source .env
+      act -W .github/workflows/publish.yaml \
+      -s SLACK_WEBHOOK_URL=$SLACK_WEBHOOK_URL \
+      -s DOCKERHUB_USERNAME=$DOCKERHUB_USERNAME \
+      -s DOCKERHUB_TOKEN=$DOCKERHUB_TOKEN
