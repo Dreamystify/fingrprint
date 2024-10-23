@@ -1,106 +1,99 @@
 import Fingrprint from '../src/index';
-import chai, { assert, expect } from 'chai';
-import 'mocha';
-
-chai.use(require('chai-as-promised'));
 
 describe('Fingrprint', () => {
+    let fingrprint: Fingrprint | null = null;
+
+    afterEach(async () => {
+        if (fingrprint) await fingrprint.close();
+    });
 
     it('should use default values and connect to redis server', async () => {
-        const fingrprint: any = new Fingrprint();
+        fingrprint = new Fingrprint();
         const ids = await fingrprint.getIds(1);
-        expect(ids).to.have.lengthOf(1);
-        assert.typeOf(ids[0], 'BigInt');
-        await fingrprint.close();
+        expect(ids).toHaveLength(1);
+        expect(typeof ids[0]).toBe('bigint'); // Jest's `toBe`
     });
 
     it('should use custom values and connect to redis server', async () => {
         const config = {
-            host: `localhost`,
+            host: 'localhost',
             port: 6389,
-            username: `default`,
-            password: `fingrprint`
+            username: 'default',
+            password: 'fingrprint'
         };
-        const fingrprint: any = new Fingrprint(config);
+        fingrprint = new Fingrprint(config);
         const ids = await fingrprint.getIds(1);
-        expect(fingrprint.toString()).to.be.equal(`Host: ${config.host}, Port: ${config.port}, Username: ${config.username}, Password: ${config.password}`)
-        expect(ids).to.have.lengthOf(1);
-        assert.typeOf(ids[0], 'BigInt');
-        await fingrprint.close();
+        expect(fingrprint.toString()).toBe(
+            `Host: ${config.host}, Port: ${config.port}, Username: ${config.username}, Password: ${config.password}`
+        );
+        expect(ids).toHaveLength(1);
+        expect(typeof ids[0]).toBe('bigint');
     });
 
     it('should fail authentication to redis server', async () => {
         try {
-            const fingrprint: any = new Fingrprint({
-                host: `localhost`,
+            fingrprint = new Fingrprint({
+                host: 'localhost',
                 port: 6389,
-                username: `test-user`,
-                password: `bad-password`
+                username: 'test-user',
+                password: 'bad-password',
+                reconnectStrategy: () => false, // No retries
             });
-            const ids = await fingrprint.getIds(1);
-            await fingrprint.close();
-        } catch(err) {
-            if (err instanceof Error) {
-                expect(err.message).to.equal('WRONGPASS invalid username-password pair or user is disabled.');
-            }
+            await fingrprint.getIds(1);
+        } catch (err) {
+            expect((err as Error).message).toContain(
+                'WRONGPASS invalid username-password pair or user is disabled.'
+            );
         }
     });
 
     it('should fail to connect to redis server', async () => {
         try {
-            const fingrprint: any = new Fingrprint({
-                host: `local`,
-                port: 8888,
+            fingrprint = new Fingrprint({
+                host: 'local', // Invalid host
+                port: 8888,    // Invalid port
+                reconnectStrategy: () => false, // No retries
             });
-            const ids = await fingrprint.getIds(1);
-        } catch(err) {
-            if (err instanceof Error) {
-                expect(err.message).to.be.oneOf(['getaddrinfo ENOTFOUND local', 'getaddrinfo EAI_AGAIN local']);
-            }
+            await fingrprint.getIds(1);
+        } catch (err) {
+            expect((err as Error).message).toEqual(expect.stringMatching(/(getaddrinfo ENOTFOUND local|getaddrinfo EAI_AGAIN local)/)); // Use Jest's string matching
         }
     });
 
     describe('getId function', () => {
-
         it('should return a bigint id', async () => {
-            const fingrprint: any = new Fingrprint({
-                host: `localhost`,
+            fingrprint = new Fingrprint({
+                host: 'localhost',
                 port: 6389,
             });
             const id = await fingrprint.getId();
-            assert.typeOf(id, 'BigInt');
-            await fingrprint.close();
+            expect(typeof id).toBe('bigint');
         });
     });
-    
+
     describe('getIds function', () => {
-      
         it('should return an array of bigint', async () => {
-            const fingrprint = new Fingrprint({
-                host: `localhost`,
+            const count = 5;
+            fingrprint = new Fingrprint({
+                host: 'localhost',
                 port: 6389,
             });
-            const count = 5;
             const ids = await fingrprint.getIds(count);
-            expect(ids).to.have.lengthOf(count);
-            for (const id of ids) {
-                assert.typeOf(id, 'BigInt');
-            }
-            await fingrprint.close();
+            expect(ids).toHaveLength(count);
+            ids.forEach(id => {
+                expect(typeof id).toBe('bigint');
+            });
         });
 
         it('should handle redis connection errors', async () => {
-            const fingrprint = new Fingrprint({
-                host: `localhost`,
+            fingrprint = new Fingrprint({
+                host: 'localhost',
                 port: 6389,
             });
             try {
-                const count = 5;
-                const ids = await fingrprint.getIds(2);
-            } catch(err) {
-                expect(err.message).to.equal('redis connection issue');
-            } finally {
-                await fingrprint.close();
+                await fingrprint.getIds(2);
+            } catch (err) {
+                expect((err as Error).message).toBe('redis connection issue');
             }
         });
     });
