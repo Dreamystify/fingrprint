@@ -6,6 +6,8 @@ type FingrprintConfig = Partial<{
     port: number
     username: string
     password: string
+    reconnectStrategy: (retries: number, cause?: Error) => false | number | Error;
+    connectTimeout: number;
 }>
 
 // shard name and id for single use
@@ -41,13 +43,16 @@ export default class Fingrprint {
         this.#port = options.port || 6389;
         this.#username = options.username || `default`;
         this.#password = options.password || `fingrprint`;
+
+        const reconnectStrategy = options.reconnectStrategy || ((retries: number) => Math.min(retries * 50, 500));
+        const connectTimeout = options.connectTimeout || 5000;
+
         this.#client = createClient({
             socket: {
                 host: this.#host, 
                 port: this.#port,
-                reconnectStrategy: (retries: number) => {
-                    return Math.min(retries * 50, 500);
-                }
+                reconnectStrategy,
+                connectTimeout
             },
             username: this.#username,
             password: this.#password,
@@ -175,7 +180,9 @@ export default class Fingrprint {
     }
 
     async close() {
-        if(this.#client != undefined) await this.#client.quit();
+        if (this.#client && this.#client.isOpen) {
+            await this.#client.quit();
+        }
     }
 
     toString() {
