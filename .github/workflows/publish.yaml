@@ -28,13 +28,13 @@ jobs:
         with:
           redis-version: ${{ matrix.redis-version }}
           redis-port: 6389
-          redis-container-name: redis
+          redis-container-name: redis-${{ github.job }}-${{ matrix.node-version }}
       - run: npm ci --ignore-scripts
       - run: npm test 
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       #- run: npm run coverage
-      # - uses: codecov/codecov-action@v3
+      # - uses: codecov/codecov-action@v4
       #   with:
       #     token: ${{ secrets.CODECOV_TOKEN }}
       #     directory: ./coverage/lcov-report/
@@ -46,7 +46,7 @@ jobs:
           status: ${{ job.status }}
           notify_when: 'failure'
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.DREAMYSTIFY_SLACK_BOT_PACKAGES }}
 
   release:
     name: Create GitHub Release
