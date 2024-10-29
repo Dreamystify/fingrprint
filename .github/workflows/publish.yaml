@@ -33,12 +33,12 @@ jobs:
       - run: npm test 
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      #- run: npm run coverage
-      # - uses: codecov/codecov-action@v4
-      #   with:
-      #     token: ${{ secrets.CODECOV_TOKEN }}
-      #     directory: ./coverage/lcov-report/
-      #     fail_ci_if_error: true
+      - run: npm run coverage
+      - uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: ./coverage/lcov-report/
+          fail_ci_if_error: true
       - name: Report Status
         if: always()
         uses: ravsamhq/notify-slack-action@v1
