@@ -17,7 +17,7 @@ jobs:
     steps:
       - name: Git checkout
         uses: actions/checkout@v4
-      - name: Using Node.js ${{ matrix.node-version }}
+      - name: Set up Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
@@ -30,21 +30,22 @@ jobs:
           redis-port: 6389
           redis-container-name: redis-${{ github.job }}-${{ matrix.node-version }}
       - run: npm ci --ignore-scripts
-      - run: npm test 
+      - run: npm test
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: npm run coverage
-      - uses: codecov/codecov-action@v4
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          directory: ./coverage/lcov-report/
+          files: ./coverage/lcov.info
           fail_ci_if_error: true
       - name: Report Status
         if: always()
         uses: ravsamhq/notify-slack-action@v1
         with:
           status: ${{ job.status }}
-          notify_when: 'failure'
+          notify_when: "success,failure"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.DREAMYSTIFY_SLACK_BOT_PACKAGES }}
 
