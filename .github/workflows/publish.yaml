@@ -7,8 +7,8 @@ on:
       - 'v*'
 
 jobs:
-  build-test-coverage:
-    name: Build test and coverage codebase
+  build-test:
+    name: Build test codebase
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -33,25 +33,18 @@ jobs:
       - run: npm test
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: npm run coverage
-      - name: Upload to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/lcov.info
-          fail_ci_if_error: true
       - name: Report Status
         if: always()
         uses: ravsamhq/notify-slack-action@v1
         with:
           status: ${{ job.status }}
-          notify_when: "success,failure"
+          notify_when: 'success,failure'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.DREAMYSTIFY_SLACK_BOT_PACKAGES }}
 
   release:
     name: Create GitHub Release
-    needs: build-test-coverage
+    needs: build-test
     runs-on: ubuntu-latest
     steps:
       - name: Git checkout
@@ -93,6 +86,6 @@ jobs:
         uses: ravsamhq/notify-slack-action@v1
         with:
           status: ${{ job.status }}
-          notify_when: 'failure'
+          notify_when: 'success,failure'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.DREAMYSTIFY_SLACK_BOT_PACKAGES }}
