@@ -15,8 +15,8 @@
     "build": "npm run clean && tsc -p .",
     "watch": "tsc -w -p .",
     "clean": "rm -rf lib",
-    "test": "jest --coverage",
-    "coverage": "codecov"
+    "test": "jest",
+    "coverage": "jest --coverage"
   },
   "repository": {
     "type": "git",
