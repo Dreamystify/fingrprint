@@ -1,6 +1,6 @@
 {
   "name": "@dreamystify/fingrprint",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "A distributed, k-sortable unique ID generation system using Redis and Lua, inspired by Icicle.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
