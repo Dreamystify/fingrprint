@@ -34,7 +34,7 @@ npm install @dreamystify/fingrprint
 To build the package locally with the TypeScript compiler, run:
 
 ```js
-npm run compile
+npm run build
 ```
 
 # Usage
