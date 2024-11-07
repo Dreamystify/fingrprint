@@ -35,10 +35,15 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Report Status
         if: always()
-        uses: ravsamhq/notify-slack-action@v1
+        uses: ravsamhq/notify-slack-action@v2
         with:
-          status: ${{ job.status }}
           notify_when: 'success,failure'
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: "{workflow} has {status_message}"
+          #message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>"
+          message_format: "{emoji} <{repo_url}|{repo}>"
+          footer: "Linked Workflow <{workflow_url}|View>"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.DREAMYSTIFY_SLACK_BOT_PACKAGES }}
 
@@ -85,7 +90,12 @@ jobs:
         if: always()
         uses: ravsamhq/notify-slack-action@v1
         with:
-          status: ${{ job.status }}
           notify_when: 'success,failure'
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: "{workflow} has {status_message}"
+          #message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>"
+          message_format: "{emoji} <{repo_url}|{repo}>"
+          footer: "Linked Workflow <{workflow_url}|View>"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.DREAMYSTIFY_SLACK_BOT_PACKAGES }}
