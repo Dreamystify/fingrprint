@@ -33,16 +33,20 @@ jobs:
       - run: npm test
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Set Capitalized Job Name
+        run: echo "CAPITALIZED_JOB=$(echo "${{ github.job }}" | sed 's/^./\U&/')" >> $GITHUB_ENV
       - name: Report Status
+        uses: ravsamhq/notify-slack-action@v2        
         if: always()
-        uses: ravsamhq/notify-slack-action@v2
         with:
           notify_when: 'success,failure'
           status: ${{ job.status }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          notification_title: "{workflow} *{job}* has {status_message}"
-          #message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>"
-          message_format: "{emoji} <{repo_url}|{repo}>"
+          notification_title: |
+            {workflow} ${{ github.ref_name }}
+            *${{ env.CAPITALIZED_JOB }}* has {status_message}
+          message_format: |
+            {emoji} <{repo_url}|{repo}>
           footer: "Linked Workflow <{workflow_url}|View>"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.DREAMYSTIFY_SLACK_BOT_PACKAGES }}
@@ -86,16 +90,20 @@ jobs:
       - if: steps.publish.outputs.type != 'none'
         run: |
           echo "Version changed: ${{ steps.publish.outputs.old-version }} => ${{ steps.publish.outputs.version }}"
+      - name: Set Capitalized Job Name
+        run: echo "CAPITALIZED_JOB=$(echo "${{ github.job }}" | sed 's/^./\U&/')" >> $GITHUB_ENV
       - name: Report Status
+        uses: ravsamhq/notify-slack-action@v2        
         if: always()
-        uses: ravsamhq/notify-slack-action@v1
         with:
           notify_when: 'success,failure'
           status: ${{ job.status }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          notification_title: "{workflow} *{job}* has {status_message}"
-          #message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>"
-          message_format: "{emoji} <{repo_url}|{repo}>"
+          notification_title: |
+            {workflow} ${{ github.ref_name }}
+            *${{ env.CAPITALIZED_JOB }}* has {status_message}
+          message_format: |
+            {emoji} <{repo_url}|{repo}>
           footer: "Linked Workflow <{workflow_url}|View>"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.DREAMYSTIFY_SLACK_BOT_PACKAGES }}
