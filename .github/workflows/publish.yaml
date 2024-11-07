@@ -1,5 +1,5 @@
 ---
-name: Publish Npm Package
+name: Fingrprint Package
 
 on: 
   push:
