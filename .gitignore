@@ -6,3 +6,4 @@ lib/
 typings/
 .DS_Store
 .env
+.vscode/
