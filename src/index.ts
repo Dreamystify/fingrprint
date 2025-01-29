@@ -6,6 +6,7 @@ export type FingrprintConfig = Partial<{
     port: number
     username: string
     password: string
+    database: number
     reconnectStrategy: (retries: number, cause?: Error) => false | number | Error;
     connectTimeout: number;
 }>
@@ -36,6 +37,7 @@ export default class Fingrprint {
     #port;
     #username;
     #password;
+    #database;
 
     constructor(options?: FingrprintConfig) {
         options = options || {};
@@ -43,7 +45,8 @@ export default class Fingrprint {
         this.#port = options.port || 6389;
         this.#username = options.username || `default`;
         this.#password = options.password || `fingrprint`;
-
+        this.#database = options.database || 0;
+        
         const reconnectStrategy = options.reconnectStrategy || ((retries: number) => Math.min(retries * 50, 500));
         const connectTimeout = options.connectTimeout || 5000;
 
@@ -52,10 +55,11 @@ export default class Fingrprint {
                 host: this.#host, 
                 port: this.#port,
                 reconnectStrategy,
-                connectTimeout
+                connectTimeout,
             },
             username: this.#username,
             password: this.#password,
+            database: this.#database,
             scripts: {
                 generateIds: defineScript({
                     NUMBER_OF_KEYS: 0,
