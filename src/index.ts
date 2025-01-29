@@ -1,7 +1,7 @@
 import bigInteger from 'big-integer';
 import { createClient, defineScript } from 'redis';
 
-type FingrprintConfig = Partial<{
+export type FingrprintConfig = Partial<{
     host: string
     port: number
     username: string
