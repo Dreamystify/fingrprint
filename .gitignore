@@ -7,3 +7,4 @@ typings/
 .DS_Store
 .env
 .vscode/
+.data/
