@@ -1,141 +1,627 @@
 import bigInteger from 'big-integer';
-import { createClient, defineScript } from 'redis';
+import crypto from 'crypto';
+import Redis, { Cluster, Command, ReplyError } from "ioredis";
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { EventEmitter } from 'events';
 
+// Extend the Redis and Cluster interfaces to include the generateIds method
+declare module 'ioredis' {
+    interface Redis {
+        generateIds(...args: any[]): Promise<number[]>;
+    }
+    interface Cluster {
+        generateIds(...args: any[]): Promise<number[]>;
+    }
+}
+
+/**
+ * Configuration options for the Fingrprint library.
+ */
 export type FingrprintConfig = Partial<{
-    host: string
-    port: number
-    username: string
-    password: string
-    database: number
-    reconnectStrategy: (retries: number, cause?: Error) => false | number | Error;
+    /**
+     * List of Redis nodes used in **Redis Cluster** mode.
+     * Each node must have a `host` and `port`.
+     * 
+     * @example
+     * clusterNodes: [
+     *   { host: "redis-node-1", port: 6379 },
+     *   { host: "redis-node-2", port: 6379 }
+     * ]
+     */
+    clusterNodes: { host: string; port: number }[];
+
+    /**
+     * List of Redis Sentinel nodes for **high availability mode**.
+     * Used to determine which Redis primary to connect to.
+     * 
+     * @example
+     * sentinels: [
+     *   { host: "sentinel1", port: 26379 },
+     *   { host: "sentinel2", port: 26379 }
+     * ]
+     */
+    sentinels: { host: string; port: number }[];
+
+    /**
+     * Username for Sentinel authentication.
+     * 
+     * @default "default"
+     */
+    sentinelUsername: string;
+
+    /**
+     * Password for Sentinel authentication.
+     * 
+     * @default "fingrprint"
+     */
+    sentinelPassword: string;
+
+    /**
+     * Name of the **Redis master instance** in Sentinel mode.
+     * Required when using Sentinels.
+     * 
+     * @default "mymaster"
+     */
+    name: string;
+
+    /**
+     * Redis **host** for a single-node Redis setup.
+     * Ignored if `clusterNodes` or `sentinels` are provided.
+     * 
+     * @default "localhost"
+     */
+    host: string;
+
+    /**
+     * Redis **port** for a single-node Redis setup.
+     * Ignored if `clusterNodes` or `sentinels` are provided.
+     * 
+     * @default 6379
+     */
+    port: number;
+
+    /**
+     * Redis **username** for authentication.
+     * Required if Redis authentication is enabled.
+     * 
+     * @default "default"
+     */
+    username: string;
+
+    /**
+     * Redis **password** for authentication.
+     * Required if Redis authentication is enabled.
+     * 
+     * @default "fingrprint"
+     */
+    password: string;
+
+    /**
+     * Redis **database index** to use (0-based).
+     * 
+     * @default 0
+     */
+    database: number;
+
+    /**
+     * Custom **retry strategy** for Redis Cluster.
+     * Defines how long to wait before reconnecting after a failure.
+     * 
+     * @param times - The number of failed attempts.
+     * @returns Number of milliseconds to wait before the next retry, or `null` to stop retrying.
+     */
+    retryStrategy: (times: number) => number | null;
+
+    /**
+     * Whether or not to reconnect on certain Redis errors.
+     * This options by default is `null`, which means it should never reconnect on Redis errors.
+     * You can pass a function that accepts an Redis error, and returns:
+     * - `true` or `1` to trigger a reconnection.
+     * - `false` or `0` to not reconnect.
+     * - `2` to reconnect and resend the failed command (who triggered the error) after reconnection.
+     */
+    reconnectOnError: (err: Error) => boolean | 1 | 2;
+
+    /**
+     * Connection timeout in milliseconds.
+     * 
+     * @default 5000
+     */
     connectTimeout: number;
-}>
+}>;
+
+export const FingrprintEvents = {
+    CLIENT_CREATED: 'clientCreated',
+    CONNECTED: 'connected',
+    SCRIPT_LOADED: 'scriptLoaded',
+    NODE_ADDED: 'nodeAdded',
+    NODE_REMOVED: 'nodeRemoved',
+    CLUSTER_NODE_ADDED: '+node',
+    CLUSTER_NODE_REMOVED: '-node',
+    ERROR: 'error',
+
+    // Redis Events
+    CONNECT: 'connect',
+    CONNECTING: 'connecting',
+    RECONNECTING: 'reconnecting',
+    DISCONNECTED: 'disconnected',
+    WAIT: 'wait',
+    READY: 'ready',
+    CLOSE: 'close',
+    END: 'end',
+    RECONNECTED: 'reconnected',
+    RECONNECTION_ATTEMPTS_REACHED: 'reconnectionAttemptsReached',
+} as const;
+
+type RedisEvents = {
+    'connect': () => void;
+    'connecting': () => void;
+    'disconnected': () => void;
+    'reconnecting': () => void;
+    'reconnectionAttemptsReached': () => void;
+    'wait': () => void;
+    'ready': () => void;
+    'close': () => void;
+    'end': () => void;
+    'error': (error: Error) => void;
+
+   // "wait" | "reconnecting" | "connecting" | "connect" | "ready" | "close" | "end";
+}
 
 // shard name and id for single use
-const FINGRPRINT_SHARD_ID_KEY = process.env.FINGRPRINT_SHARD_ID_KEY || `fingrprint-shard-id`;
-const FINGRPRINT_SHARD_ID = process.env.FINGRPRINT_SHARD_ID || 1;
+const FINGRPRINT_SHARD_ID_KEY: string = process.env.FINGRPRINT_SHARD_ID_KEY ?? `{fingrprint}-shard-id`;
+const FINGRPRINT_SHARD_ID: string = process.env.FINGRPRINT_SHARD_ID ?? '1';
+const FINGRPRINT_LOCK_KEY = '{fingrprint}-generator-lock';
+const FINGRPRINT_SEQUENCE_KEY = '{fingrprint}-generator-sequence';
+const FINGRPRINT_LOGICAL_SHARD_ID_KEY = '{fingrprint}-shard-id';
 
 // We specify an custom epoch that we will use to fit our timestamps within the bounds of the 41 bits we have
 // available. This gives us a range of ~69 years within which we can generate IDs.
-const CUSTOM_EPOCH = 1451566800,
-  	  LOGICAL_SHARD_ID_BITS = 10,
-  	  SEQUENCE_BITS = 12,
-  	  TIMESTAMP_SHIFT = SEQUENCE_BITS + LOGICAL_SHARD_ID_BITS,
-  	  LOGICAL_SHARD_ID_SHIFT = SEQUENCE_BITS;
+const CUSTOM_EPOCH: number = 1451566800;
+const LOGICAL_SHARD_ID_BITS: number = 10;
+const SEQUENCE_BITS: number = 12;
+const TIMESTAMP_SHIFT: number = SEQUENCE_BITS + LOGICAL_SHARD_ID_BITS;
+const LOGICAL_SHARD_ID_SHIFT: number = SEQUENCE_BITS;
 
 // These three bitopped constants are also used as bit masks for the maximum value of the data they represent.
-const MAX_SEQUENCE = ~(-1 << SEQUENCE_BITS),
-      MAX_LOGICAL_SHARD_ID = ~(-1 << LOGICAL_SHARD_ID_BITS),
-      MIN_LOGICAL_SHARD_ID = 1;
+const MAX_SEQUENCE: number = ~(-1 << SEQUENCE_BITS);
+const MAX_LOGICAL_SHARD_ID: number = ~(-1 << LOGICAL_SHARD_ID_BITS);
+const MIN_LOGICAL_SHARD_ID: number = 1;
+const MAX_BATCH_SIZE: number = MAX_SEQUENCE + 1;
+const ONE_MILLI_IN_MICRO_SECS: number = 1000; // TimeUnit.MICROSECONDS.convert(1, TimeUnit.MILLISECONDS);
 
-const MAX_BATCH_SIZE = MAX_SEQUENCE + 1;
-const ONE_MILLI_IN_MICRO_SECS = 1000; // TimeUnit.MICROSECONDS.convert(1, TimeUnit.MILLISECONDS);
+/**
+ * Fingrprint Class - Generates unique, sortable IDs using Redis.
+ */
+export class Fingrprint extends EventEmitter {
+    #client: Redis | Cluster;
+    #config!: FingrprintConfig;
+    #generateIdsScript!: string;
+    #shardManager!: ClusterShardManager;
 
-export default class Fingrprint {
-    #client;
-    #host;
-    #port;
-    #username;
-    #password;
-    #database;
+    /**
+     * Creates a new instance of the Fingrprint library.
+     * @param {FingrprintConfig} [config] - Configuration for Redis connection.
+     */
+    constructor(config?: FingrprintConfig) {
+        super();
 
-    constructor(options?: FingrprintConfig) {
-        options = options || {};
-        this.#host = options.host || `localhost`;
-        this.#port = options.port || 6389;
-        this.#username = options.username || `default`;
-        this.#password = options.password || `fingrprint`;
-        this.#database = options.database || 0;
-        
-        const reconnectStrategy = options.reconnectStrategy || ((retries: number) => Math.min(retries * 50, 500));
-        const connectTimeout = options.connectTimeout || 5000;
+        const { 
+            CLIENT_CREATED, 
+            RECONNECTION_ATTEMPTS_REACHED,
+        } = FingrprintEvents;
 
-        this.#client = createClient({
-            socket: {
-                host: this.#host, 
-                port: this.#port,
-                reconnectStrategy,
-                connectTimeout,
-            },
-            username: this.#username,
-            password: this.#password,
-            database: this.#database,
-            scripts: {
-                generateIds: defineScript({
-                    NUMBER_OF_KEYS: 0,
-                    SCRIPT: 
-                        `local lock_key = 'fingrprint-generator-lock'
-                        local sequence_key = 'fingrprint-generator-sequence'
-                        local logical_shard_id_key = 'fingrprint-shard-id'
-        
-                        local max_sequence = tonumber(ARGV[1])
-                        local min_logical_shard_id = tonumber(ARGV[2])
-                        local max_logical_shard_id = tonumber(ARGV[3])
-                        local num_ids = tonumber(ARGV[4])
-        
-                        if redis.call('EXISTS', lock_key) == 1 then
-                            redis.log(redis.LOG_NOTICE, 'Fingrprint: Cannot generate ID, waiting for lock to expire.')
-                            return redis.error_reply('Fingrprint: Cannot generate ID, waiting for lock to expire.')
-                        end
-        
-                        --[[
-                        Increment by a set number, this can
-                        --]]
-                        local end_sequence = redis.call('INCRBY', sequence_key, num_ids)
-                        local start_sequence = end_sequence - num_ids + 1
-                        local logical_shard_id = tonumber(redis.call('GET', logical_shard_id_key)) or -1
-        
-                        if end_sequence >= max_sequence then
-                            redis.log(redis.LOG_NOTICE, 'Fingrprint: Rolling sequence back to the start, locking for 1ms.')
-                            redis.call('SET', sequence_key, '-1')
-                            redis.call('PSETEX', lock_key, 1, 'lock')
-                            end_sequence = max_sequence
-                        end
-        
-                        --[[
-                        The TIME command MUST be called after anything that mutates state, or the Redis server will error the script out.
-                        This is to ensure the script is "pure" in the sense that randomness or time based input will not change the
-                        outcome of the writes.
-                        See the "Scripts as pure functions" section at http://redis.io/commands/eval for more information.
-                        --]]
-                        local time = redis.call('TIME')
-        
-                        return {
-                            start_sequence,
-                            end_sequence, -- Doesn't need conversion, the result of INCR or the variable set is always a number.
-                            logical_shard_id,
-                            tonumber(time[1]),
-                            tonumber(time[2])
-                        }`,
-                    transformArguments(MAX_SEQUENCE: number, MIN_LOGICAL_SHARD_ID: number, MAX_LOGICAL_SHARD_ID: number, batch: number): Array<string> {
-                        return [MAX_SEQUENCE.toString(), MIN_LOGICAL_SHARD_ID.toString(), MAX_LOGICAL_SHARD_ID.toString(), batch.toString()];
-                    },
-                    transformReply(reply: number[]): number[] {
-                        return reply;
-                    }
-                }),
+        const defaultRetryStrategy = (times: number): number | null => {
+            if (times > 10) {
+                const error = new Error("Max Redis reconnection attempts reached");
+                this.emit(RECONNECTION_ATTEMPTS_REACHED, { error });
+                return null; // Stop retrying
             }
+            return Math.min(times * 100, 2000); // Exponential backoff
+        }
+
+        const defaultReconnectOnError = (error: Error) => {
+            switch(error.message) {
+                case "NOAUTH Authentication required":
+                    return false;
+                case "WRONGPASS invalid username-password pair or user is disabled.":
+                    return false;
+                case "getaddrinfo ENOTFOUND invalid-host":
+                    return false;
+                case "getaddrinfo ECONNREFUSED":
+                    return false;
+                default:
+                    return true;
+            }
+        }
+
+        this.#config = {
+            clusterNodes: config?.clusterNodes ?? [],
+            sentinels: config?.sentinels ?? [],
+            name: config?.name ?? process.env.REDIS_SENTINEL_NAME ?? "mymaster",
+            host: config?.host ?? process.env.REDIS_HOST ?? "localhost",
+            port: config?.port ?? (Number(process.env.REDIS_PORT) || 6379),
+            username: config?.username ?? process.env.REDIS_USERNAME ?? "default",
+            password: config?.password ?? process.env.REDIS_PASSWORD ?? "fingrprint",
+            sentinelUsername: config?.sentinelUsername,
+            sentinelPassword: config?.sentinelPassword,
+            database: config?.database ?? (Number(process.env.REDIS_DB) || 0),
+            retryStrategy: config?.retryStrategy ?? defaultRetryStrategy,
+            reconnectOnError: config?.reconnectOnError ?? defaultReconnectOnError,
+            connectTimeout: config?.connectTimeout ?? 5000,
+        };
+
+        // Load the Lua script for generating IDs.
+        this.#generateIdsScript = readFileSync(join(__dirname, 'scripts/generateIds.lua'), 'utf-8');
+
+
+        if (this.#config.clusterNodes?.length) {
+            this.#client = new Cluster(this.#config.clusterNodes, {
+                redisOptions: {
+                    username: this.#config.username,
+                    password: this.#config.password,
+                    db: this.#config.database,
+                    reconnectOnError: this.#config.reconnectOnError ?? defaultReconnectOnError,
+                    connectTimeout: this.#config.connectTimeout,
+                    enableReadyCheck: true,
+                    // lazyConnect is ignored in cluster mode
+                },
+                scripts: {
+                    generateIds: {
+                      lua: this.#generateIdsScript,
+                      numberOfKeys: 3,
+                      readOnly: false,
+                    },
+                },
+                clusterRetryStrategy: this.#config.retryStrategy ?? defaultRetryStrategy,
+                enableReadyCheck: true,
+                scaleReads: "master",
+                maxRedirections: 16,
+                retryDelayOnFailover: 100,
+                retryDelayOnClusterDown: 100,
+                retryDelayOnTryAgain: 100,
+                retryDelayOnMoved: 0,
+                slotsRefreshTimeout: 1000,
+                slotsRefreshInterval: 5000,
+            });
+
+            this.emit(CLIENT_CREATED, 'Redis Cluster Client Created');
+        } else if (this.#config.sentinels?.length) {
+            this.#client = new Redis({
+                sentinels: this.#config.sentinels,
+                name: this.#config.name,
+                // For connecting to the master
+                username: this.#config.username,
+                password: this.#config.password,
+                // For connecting to the sentinel
+                sentinelUsername: this.#config.sentinelUsername,
+                sentinelPassword: this.#config.sentinelPassword,
+                db: this.#config.database,
+                sentinelRetryStrategy: this.#config.retryStrategy ?? defaultRetryStrategy,
+                reconnectOnError: this.#config.reconnectOnError ?? defaultReconnectOnError,
+                connectTimeout: this.#config.connectTimeout,
+                enableReadyCheck: true,
+                lazyConnect: true,
+            });
+
+            this.#client.defineCommand('generateIds', {
+                lua: this.#generateIdsScript,
+                numberOfKeys: 3,
+            });
+
+            this.emit(CLIENT_CREATED, 'Redis Sentinel Client Created');
+        } else {
+            this.#client = new Redis({
+                host: this.#config.host,
+                port: this.#config.port,
+                username: this.#config.username,
+                password: this.#config.password,
+                db: this.#config.database,
+                retryStrategy: this.#config.retryStrategy ?? defaultRetryStrategy,
+                reconnectOnError: this.#config.reconnectOnError ?? defaultReconnectOnError,
+                connectTimeout: this.#config.connectTimeout,
+                enableReadyCheck: true,
+                lazyConnect: true,
+            });
+
+            this.#client.defineCommand('generateIds', {
+                lua: this.#generateIdsScript,
+                numberOfKeys: 3,
+            });
+
+            this.emit(CLIENT_CREATED, 'Redis Single Instance Client Created');
+        }
+
+        if (this.#client.listenerCount('error') === 0) {
+            this.#client.on('error', (error) => {});
+        }
+    }
+
+    /**
+     * Creates a new instance of the Fingrprint library.
+     * @param {FingrprintConfig} [config] - Configuration for Redis connection.
+     * @returns {Promise<Fingrprint>} - A promise that resolves to a new Fingrprint instance.
+     */
+    static async initialize(config?: FingrprintConfig): Promise<Fingrprint> {
+        try {
+            const instance = new Fingrprint(config);
+            await instance.#init();
+            return instance;
+        } catch (err: unknown) {
+            let errorMsg: string | undefined = 'Unknown Error';
+        
+            if (err && typeof err === 'object' && 'message' in err && typeof (err as any).message === 'string') {
+                const message = (err as { message: string }).message;
+                if (message.includes('NOAUTH')) {
+                    errorMsg = 'No authentication provided.';
+                } else if (message.includes('WRONGPASS')) {
+                    errorMsg = 'Invalid username-password pair or user is disabled.';
+                } else if (message.includes('getaddrinfo ENOTFOUND')) {
+                    errorMsg = 'Invalid host.';
+                } else if (message.includes('getaddrinfo ECONNREFUSED')) {
+                    errorMsg = 'Connection refused.';
+                } else {
+                    errorMsg = message;
+                }
+            } else {
+                errorMsg = `Unknown error: ${err}`;
+            }
+        
+            throw new Error(`Failed to initialize: ${errorMsg}`);
+            
+        }
+    }
+
+    /**
+     * Initializes and attaches event listeners for Redis client events.
+     *
+     * This asynchronous method sets up listeners for various Redis client events such as
+     * "connect", "connecting", "disconnected", "reconnecting", "reconnectionAttemptsReached",
+     * "wait", "ready", "close", "end", and "error". For each event, it logs a corresponding
+     * message to the console and emits a related event via the instance's EventEmitter interface.
+     *
+     * In the "error" event handler, if the error contains specific messages (e.g., "WRONGPASS"
+     * or "ENOTFOUND") or includes a "code" property, it triggers the client's quit operation.
+     *
+     * After attaching all event listeners, the method checks the client's status. If the client
+     * is not already in the "connecting" or "ready" state, it attempts to connect the client.
+     * Any connection errors are caught, emitted as an "ERROR" event, and then rethrown.
+     *
+     * @async
+     * @private
+     * @returns {Promise<void>} A promise that resolves once the event listeners are attached and
+     *                           the client is connected (if necessary).
+     */
+    async #initEvents(): Promise<void> {
+        const {
+            CONNECT,
+            CONNECTING,
+            RECONNECTING,
+            RECONNECTION_ATTEMPTS_REACHED,
+            DISCONNECTED,
+            WAIT,
+            READY,
+            CLOSE,
+            END,
+            ERROR,
+        } = FingrprintEvents;
+
+        const errorHandler = (error: Error) => {
+            this.emit(ERROR, { error });
+        };
+
+        // Map Redis events to Fingrprint events.
+        const redisEvents: Partial<{ [K in keyof RedisEvents]: RedisEvents[K] }> = {
+            connect: () => { this.emit(CONNECT, 'Redis connected'); },
+            connecting: () => { this.emit(CONNECTING, 'Redis connecting'); },
+            disconnected: () => { this.emit(DISCONNECTED, 'Redis disconnected'); },
+            reconnecting: () => { this.emit(RECONNECTING, 'Redis reconnecting'); },
+            reconnectionAttemptsReached: () => { this.emit(RECONNECTION_ATTEMPTS_REACHED, 'Redis reconnection attempts reached'); },
+            wait: () => { this.emit(WAIT, 'Redis wait'); },
+            ready: () => { this.emit(READY, 'Redis ready'); },
+            close: () => { this.emit(CLOSE, 'Redis closed'); },
+            end: () => { this.emit(END, 'Redis end'); },
+        };
+
+        // Attach the non-error events.
+        for (const event in redisEvents) {
+            const eventKey = event as keyof typeof redisEvents;
+            this.#client?.on(eventKey, redisEvents[eventKey] as (...args: any[]) => void);
+        }
+
+        // Attach the error handler for lifecycle errors.
+        this.#client?.on('error', errorHandler as (...args: any[]) => void);
+
+        // Use a promise to handle the initial connection 
+        // while temporarily  suspending the error handler.
+        return new Promise((resolve, reject) => {
+            this.#client.off('error', errorHandler as (...args: any[]) => void);
+
+            const onReady = () => {
+                cleanup();
+                this.#client.on('error', errorHandler as (...args: any[]) => void);
+                resolve();
+            };
+
+            const onError = (error: Error) => {
+                cleanup();
+                this.#client.on('error', errorHandler as (...args: any[]) => void);
+                this.#client.disconnect();
+                reject(error);
+            };
+
+            const cleanup = () => {
+                this.#client.off('ready', onReady);
+                this.#client.off('error', onError);
+            };
+
+            this.#client.once('ready', onReady);
+            this.#client.once('error', onError);
+            this.#client.connect().catch(onError);
         });
     }
 
+    /**
+     * Initializes the Redis connection and loads necessary Lua scripts.
+     * Handles shard ID assignment in cluster mode.
+     */
     async #init() {
+        const {
+            NODE_ADDED,
+            NODE_REMOVED,
+            CLUSTER_NODE_ADDED, 
+            CLUSTER_NODE_REMOVED,
+            SCRIPT_LOADED,
+            CONNECTED,
+            READY,
+            ERROR,
+        } = FingrprintEvents;
+        const { SHARD_ID_ASSIGNED, SHARD_ID_REMOVED } = ClusterShardManagerEvents;
+        const DEBOUNCE_DELAY = 300;
+        
         try {
-            await this.#client.connect();
-            const exists = await this.#client.exists(FINGRPRINT_SHARD_ID_KEY);
-            if(!exists) await this.#client.set(FINGRPRINT_SHARD_ID_KEY, FINGRPRINT_SHARD_ID);
-        } catch (err) {
+            await this.#initEvents();
+
+            const isCluster = this.#client instanceof Cluster;
+            const isSentinel = !!this.#config.sentinels?.length;
+
+            if (isCluster) {
+                const cluster = this.#client as Cluster;
+                this.#shardManager = new ClusterShardManager();
+
+                this.#shardManager.on(SHARD_ID_ASSIGNED, ({ nodeId, shardId }) => {
+                    this.emit(SCRIPT_LOADED, `Shard ID ${shardId} assigned to node ${nodeId}`);
+                });
+
+                this.#shardManager.on(SHARD_ID_REMOVED, ({ nodeId }) => {
+                    this.emit(CLUSTER_NODE_REMOVED, `Shard ID removed for node ${nodeId}`);
+                });
+
+                this.#shardManager.on(ERROR, ({ error }) => {
+                    this.emit(ERROR, { error });
+                });
+
+                if (cluster.status !== 'ready') {
+                    await new Promise(resolve => cluster.once('ready', resolve));
+                }
+
+                const nodes = cluster.nodes('master');
+
+                for (const node of nodes) {
+                    const shardId = await this.#shardManager.assignShardId(node);
+                    await node.set(FINGRPRINT_SHARD_ID_KEY, shardId.toString());
+                }
+
+                const handleNodeAdded = this.#debounce(async (node: Redis) => {
+                    const { host, port } = node.options;
+                    this.emit(NODE_ADDED, `New node detected: ${host}:${port}`);
+                
+                    const shardId = await this.#shardManager.assignShardId(node);
+                    await node.set(FINGRPRINT_SHARD_ID_KEY, shardId.toString());
+                
+                    const scriptSHA = await this.#loadScript(node);
+                    this.emit(SCRIPT_LOADED, `Loaded script on ${host}:${port} with SHA ${scriptSHA}`);
+                }, DEBOUNCE_DELAY);
+
+                const handleNodeRemoved = this.#debounce(async (node: Redis) => {
+                    const { host, port } = node.options;
+                    this.emit(NODE_REMOVED, `Node removed: ${host}:${port}`);
+               
+                    const nodeId = await node.call('CLUSTER', 'MYID') as string;
+                    await this.#shardManager.removeShardId(nodeId);
+                }, DEBOUNCE_DELAY);
+                
+                this.#client.on(CLUSTER_NODE_ADDED, handleNodeAdded);
+                this.#client.on(CLUSTER_NODE_REMOVED, handleNodeRemoved);
+
+                this.emit(CONNECTED, 'Connected and initialized scripts on all cluster masternodes');
+            } else if(isSentinel) {
+                try {
+                    // Get replication info from the master
+                    const info: string = await this.#client.call('INFO', 'replication') as string;
+
+                    // Parse the response into key-value pairs using a concise method
+                    const infoMap = info
+                      .split('\n')
+                      .filter(line => line && line.includes(':'))
+                      .reduce((acc, line) => {
+                        const [key, value] = line.split(':');
+                        acc[key.trim()] = value.trim();
+                        return acc;
+                      }, {} as Record<string, string>);
+               
+                    // If this instance is the master, load the script and set the shard ID
+                    if (infoMap['role'] === 'master') {
+                        const scriptSHA = await this.#loadScript(this.#client as Redis);
+                        await this.#client.set(FINGRPRINT_SHARD_ID_KEY, FINGRPRINT_SHARD_ID);
+                        this.emit(SCRIPT_LOADED, `Loaded script on new Redis master after failover with SHA ${scriptSHA}`);
+                    }
+                } catch (err) {
+                    const error = new Error(`Failed to fetch Redis master info: ${(err as Error).message}`);
+                    this.emit(ERROR, { error });
+                }
+            } else {
+                const scriptSHA = await this.#loadScript(this.#client as Redis);
+                await this.#client.set(FINGRPRINT_SHARD_ID_KEY, FINGRPRINT_SHARD_ID);
+                const { host, port } = this.#config;
+                this.emit(SCRIPT_LOADED, `Loaded script on ${host}:${port} with SHA ${scriptSHA}`);
+            }
+        } catch (err: any) {
             throw err;
         }
     }
 
-    async getIds(count?: number): Promise<bigint[]> {
-        let batch: number = (count = count !== undefined ? Math.abs(count) : 1) > MAX_BATCH_SIZE ? MAX_BATCH_SIZE : count;
+    /**
+     * Creates a debounced version of a function that delays its execution.
+     * @param {T} func - The function to debounce.
+     * @param {number} wait - The delay in milliseconds.
+     * @returns {(...args: Parameters<T>) => void} - The debounced function.
+     */
+    #debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
+        let timeout: ReturnType<typeof setTimeout>;
+        return (...args: Parameters<T>) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func(...args), wait);
+        };
+    }
+
+    /**
+     * Loads the Lua script on a given Redis node.
+     * @param {Redis} node - The Redis node to load the script on.
+     * @returns {Promise<string>} - The SHA of the loaded script.
+     */
+    async #loadScript(node: Redis): Promise<string> {
+        const scriptSHA = crypto.createHash('sha1').update(this.#generateIdsScript).digest('hex');
+        const exists = await node.call('SCRIPT', 'EXISTS', scriptSHA) as number[];
+        if (exists[0] === 0) {
+            await node.call('SCRIPT', 'LOAD', this.#generateIdsScript);
+        }
+        return scriptSHA;
+    }
+
+    /**
+     * Generates a batch of unique IDs.
+     * @param {number} [count=1] - The number of IDs to generate.
+     * @returns {Promise<bigint[]>} - An array of generated IDs.
+     */
+    async getIds(count: number = 1): Promise<bigint[]> {
+        const batch = Math.min(Math.abs(count), MAX_BATCH_SIZE);
+        const { ERROR } = FingrprintEvents;
+
         try {
-            // check if client is connected
-            if (!this.#client.isOpen) await this.#init();
-           
-            // get the numbers to create the ids
-            const reply = await this.#client.generateIds(MAX_SEQUENCE, MIN_LOGICAL_SHARD_ID, MAX_LOGICAL_SHARD_ID, batch);
+            // Get the numbers to create the IDs
+            const reply: number[] = await (this.#client).generateIds(
+                // First 3 arguments are KEYS:
+                FINGRPRINT_LOCK_KEY,
+                FINGRPRINT_SEQUENCE_KEY,
+                FINGRPRINT_LOGICAL_SHARD_ID_KEY,
+                // Then ARGV:
+                MAX_SEQUENCE,
+                MIN_LOGICAL_SHARD_ID,
+                MAX_LOGICAL_SHARD_ID,
+                batch
+            );
 
             // format the results
             const START_SEQUENCE: number 	= Number(reply[0]);
@@ -147,12 +633,12 @@ export default class Fingrprint {
             // We get the timestamp from Redis in seconds, but we get microseconds too, so we can make a timestamp in
             // milliseconds (losing some precision in the meantime for the sake of keeping things in 41 bits) using both of
             // these values
-            let timestamp = Math.trunc((TIME_SECONDS * ONE_MILLI_IN_MICRO_SECS) + (TIME_MICROSECONDS / ONE_MILLI_IN_MICRO_SECS));
+            //let timestamp = Math.trunc((TIME_SECONDS * ONE_MILLI_IN_MICRO_SECS) + (TIME_MICROSECONDS / ONE_MILLI_IN_MICRO_SECS));
+            const timestamp = Math.trunc((TIME_SECONDS * ONE_MILLI_IN_MICRO_SECS) + (TIME_MICROSECONDS / ONE_MILLI_IN_MICRO_SECS));
 
             // loop through the sequences to create the batch ids
             let ids: bigint[] = [];
             for (let i = START_SEQUENCE; i <= END_SEQUENCE; i++) {
-
                 // Here's the fun bit-shifting. The purpose of this is to get a 64-bit ID of the following
                 // format:
                 //
@@ -165,31 +651,140 @@ export default class Fingrprint {
                 //   * D is the sequence, 12 bits in total.
 
                 // compute the id
-                let id = bigInteger((timestamp - CUSTOM_EPOCH)).shiftLeft(TIMESTAMP_SHIFT).or(bigInteger(LOGICAL_SHARD_ID).shiftLeft(LOGICAL_SHARD_ID_SHIFT)).or(i).toString();
+                let id = bigInteger((timestamp - CUSTOM_EPOCH))
+                  .shiftLeft(TIMESTAMP_SHIFT)
+                  .or(bigInteger(LOGICAL_SHARD_ID)
+                  .shiftLeft(LOGICAL_SHARD_ID_SHIFT))
+                  .or(i).toString();
 
-                // add id to list of ids
                 ids.push(BigInt(id).valueOf());
             }
-            // return the batch of ids array
+
             return ids;
-        } 
-        catch (err) {
-            throw err;
+        } catch (err: any) {
+            const error = new Error(`${err instanceof Error ? err.message : 'Unknown Error'}`);
+            this.emit(ERROR, { error });
+            throw error;
         }
     }
 
+    /**
+     * Generates a single unique ID.
+     * @returns {Promise<bigint>} - The generated ID.
+     */
     async getId(): Promise<bigint> {
         const [id] = await this.getIds();
         return id;
     }
 
+    /**
+     * Closes the Redis connection.
+     */
     async close() {
-        if (this.#client && this.#client.isOpen) {
-            await this.#client.quit();
+        const { DISCONNECTED, ERROR } = FingrprintEvents;
+        if (this.#client) {
+            this.#client.removeAllListeners();
+
+            try {
+                if (this.#client.status === 'ready' || this.#client.status === 'connect') {
+                    await this.#client.quit();
+                    this.emit(DISCONNECTED, 'Redis client disconnected gracefully.');
+                } else {
+                    this.#client.disconnect();
+                    this.emit(DISCONNECTED, 'Redis client disconnected forcefully.');
+                }
+            } catch (err) {
+                this.emit(ERROR, { error: new Error(`Failed to disconnect gracefully: ${err instanceof Error ? err.message : 'Unknown Error'}`) });
+            }
+        } else {
+            this.emit(ERROR, { error: new Error('Redis client is not initialized.') });
+        }
+    }
+}
+
+/**
+ * Events emitted by ClusterShardManager.
+ */
+export const ClusterShardManagerEvents = {
+    SHARD_ID_ASSIGNED: 'shardIdAssigned',
+    SHARD_ID_REMOVED: 'shardIdRemoved',
+    ERROR: 'error',
+} as const;
+
+/**
+ * Manages shard ID assignments for Redis Cluster nodes.
+ */
+class ClusterShardManager extends EventEmitter {
+    #clusterShardIds: Map<string, number> = new Map();
+
+    constructor() {
+        super();
+    }
+
+    /**
+     * Assigns a unique shard ID to a Redis Cluster node.
+     * Ensures that shard IDs are sequential and do not overlap.
+     * Emits the `SHARD_ID_ASSIGNED` event when a new shard ID is assigned.
+     * If the node ID retrieval fails, an `ERROR` event is emitted and `0` is returned.
+     *
+     * @param {Redis} node - The Redis node for which to assign a shard ID.
+     * @returns {Promise<number>} - The assigned shard ID, or `0` if retrieval fails.
+     *
+     * @fires SHARD_ID_ASSIGNED - Emitted when a new shard ID is successfully assigned.
+     * @property {string} nodeId - The ID of the Redis node.
+     * @property {number} shardId - The assigned shard ID.
+     *
+     * @fires ERROR - Emitted if the node ID cannot be retrieved.
+     * @property {Error} error - The error object containing the failure details.
+     */
+    async assignShardId(node: Redis): Promise<number> {
+        const {
+            SHARD_ID_ASSIGNED,
+            ERROR,
+        } = ClusterShardManagerEvents;
+
+        try {
+            const nodeId: string = await node.call('CLUSTER', 'MYID') as string;
+            if (this.#clusterShardIds.has(nodeId)) {
+                return this.#clusterShardIds.get(nodeId)!;
+            }
+
+            const usedShardIds = new Set(this.#clusterShardIds.values());
+            let shardId = 1;
+            while (usedShardIds.has(shardId)) {
+                shardId++;
+            }
+
+            this.#clusterShardIds.set(nodeId, shardId);
+            this.emit(SHARD_ID_ASSIGNED, { nodeId, shardId });
+            return shardId;
+        } catch (err) {
+            const error = new Error(`Failed to retrieve node ID: ${(err as Error).message}`);
+            this.emit(ERROR, { error });
+            throw error;
         }
     }
 
-    toString() {
-        return `Host: ${this.#host}, Port: ${this.#port}, Username: ${this.#username}, Password: ${this.#password}`
+    /**
+     * Removes a shard ID mapping when a node is removed from the cluster.
+     * Emits `shardIdRemoved` event with details.
+     *
+     * @param {string} nodeId - The ID of the removed Redis node.
+     */
+    async removeShardId(nodeId: string) {
+        const { SHARD_ID_REMOVED } = ClusterShardManagerEvents;
+        if (this.#clusterShardIds.has(nodeId)) {
+            this.#clusterShardIds.delete(nodeId);
+            this.emit(SHARD_ID_REMOVED, { nodeId });
+        }
+    }
+
+    /**
+     * Retrieves the current map of assigned shard IDs.
+     *
+     * @returns {Map<string, number>} - A map of Redis node IDs to their assigned shard IDs.
+     */
+    getShardIds(): Map<string, number> {
+        return this.#clusterShardIds;
     }
 }
