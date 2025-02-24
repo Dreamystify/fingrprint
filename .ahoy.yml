@@ -42,3 +42,32 @@ commands:
       -s SLACK_WEBHOOK_URL=$SLACK_WEBHOOK_URL \
       -s DOCKERHUB_USERNAME=$DOCKERHUB_USERNAME \
       -s DOCKERHUB_TOKEN=$DOCKERHUB_TOKEN
+
+  start:
+    usage: Up the docker containers
+    cmd: |
+      clear
+      npm run build
+      docker compose up -d
+
+  stop:
+    usage: Down the docker containers
+    cmd: |
+      clear
+      docker compose down
+      
+  restart:
+    usage: Restart the docker containers
+    cmd: |
+      clear
+      docker compose down
+      npm run build
+      docker compose up -d
+      clear
+
+  logs:
+    usage: Show the docker logs
+    cmd: |
+      clear
+      docker logs sentinel-test
+      docker logs cluster-test
