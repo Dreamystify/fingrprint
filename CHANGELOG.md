@@ -13,7 +13,6 @@ All notable changes to this project will be documented in this file.
 - **Extended Configuration Options:**  
   - Updated the `FingrprintConfig` interface to include new options for cluster and Sentinel connections.
   - Added custom retry strategies and reconnection policies.
-- **Cluster Shard Management:** Introduced a new `ClusterShardManager` class to handle shard ID assignments in Redis Cluster mode.
 - **Module Augmentation:** Extended the `ioredis` interfaces to include a new `generateIds` method for generating unique IDs.
 - **Enhanced Documentation:** Added detailed JSDoc comments for classes, methods, and events throughout the codebase.
 
