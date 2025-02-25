@@ -75,14 +75,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # RELEASE_TAG: ${{ github.ref_name }}
           RELEASE_TAG: 1.0.0
+        shell: bash
         run: |
-          # Extract the section corresponding to the current tag.
-          # This sed command looks for the header starting with "## [<tag>]" and prints until the next header.
-          NOTES=$(sed -n "/^## \[${{ github.ref_name }}\]/,/^## /p" CHANGELOG.md | sed '1d;$d')
+          NOTES=$(sed -n "/^## \[${RELEASE_TAG}\]/,\$p" CHANGELOG.md | sed '1d')
           echo "Extracted release notes:"
           echo "$NOTES"
-          gh release create ${{ github.ref_name }} \
-            --repo ${{ github.repository }} \
+          # Authenticate gh if needed:
+          gh auth status || echo "$GITHUB_TOKEN" | gh auth login --with-token
+          # Create the release using the HTTPS repository format
+          gh release create ${RELEASE_TAG} \
+            --repo Dreamystify/fingrprint \
             --notes "$NOTES"
 
   publish:
