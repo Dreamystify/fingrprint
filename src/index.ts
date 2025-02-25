@@ -174,7 +174,6 @@ const FINGRPRINT_SHARD_ID_KEY: string = process.env.FINGRPRINT_SHARD_ID_KEY ?? `
 const FINGRPRINT_SHARD_ID: string = process.env.FINGRPRINT_SHARD_ID ?? '1';
 const FINGRPRINT_LOCK_KEY = '{fingrprint}-generator-lock';
 const FINGRPRINT_SEQUENCE_KEY = '{fingrprint}-generator-sequence';
-const FINGRPRINT_LOGICAL_SHARD_ID_KEY = '{fingrprint}-shard-id';
 
 // We specify an custom epoch that we will use to fit our timestamps within the bounds of the 41 bits we have
 // available. This gives us a range of ~69 years within which we can generate IDs.
@@ -198,7 +197,6 @@ export class Fingrprint extends EventEmitter {
     #client: Redis | Cluster;
     #config!: FingrprintConfig;
     #generateIdsScript!: string;
-    #shardManager!: ClusterShardManager;
 
     /**
      * Creates a new instance of the Fingrprint library.
@@ -281,7 +279,7 @@ export class Fingrprint extends EventEmitter {
                 retryDelayOnFailover: 100,
                 retryDelayOnClusterDown: 100,
                 retryDelayOnTryAgain: 100,
-                retryDelayOnMoved: 0,
+                retryDelayOnMoved: 1000,
                 slotsRefreshTimeout: 1000,
                 slotsRefreshInterval: 5000,
             });
@@ -446,6 +444,7 @@ export class Fingrprint extends EventEmitter {
 
             const onError = (error: Error) => {
                 cleanup();
+                console.log('Redis error');
                 this.#client.on('error', errorHandler as (...args: any[]) => void);
                 this.#client.disconnect();
                 reject(error);
@@ -458,7 +457,12 @@ export class Fingrprint extends EventEmitter {
 
             this.#client.once('ready', onReady);
             this.#client.once('error', onError);
-            this.#client.connect().catch(onError);
+
+            // Check if the client is already connected or connecting, if so, skip connecting again.
+            const states: string[] = [READY, CONNECTING, CONNECT];
+            if (!states.includes(this.#client.status)) {
+                this.#client.connect().catch(onError);
+            }
         });
     }
 
@@ -477,7 +481,6 @@ export class Fingrprint extends EventEmitter {
             READY,
             ERROR,
         } = FingrprintEvents;
-        const { SHARD_ID_ASSIGNED, SHARD_ID_REMOVED } = ClusterShardManagerEvents;
         const DEBOUNCE_DELAY = 300;
         
         try {
@@ -488,38 +491,17 @@ export class Fingrprint extends EventEmitter {
 
             if (isCluster) {
                 const cluster = this.#client as Cluster;
-                this.#shardManager = new ClusterShardManager();
 
-                this.#shardManager.on(SHARD_ID_ASSIGNED, ({ nodeId, shardId }) => {
-                    this.emit(SCRIPT_LOADED, `Shard ID ${shardId} assigned to node ${nodeId}`);
-                });
-
-                this.#shardManager.on(SHARD_ID_REMOVED, ({ nodeId }) => {
-                    this.emit(CLUSTER_NODE_REMOVED, `Shard ID removed for node ${nodeId}`);
-                });
-
-                this.#shardManager.on(ERROR, ({ error }) => {
-                    this.emit(ERROR, { error });
-                });
-
-                if (cluster.status !== 'ready') {
+                if (cluster.status !== READY) {
                     await new Promise(resolve => cluster.once('ready', resolve));
                 }
 
-                const nodes = cluster.nodes('master');
-
-                for (const node of nodes) {
-                    const shardId = await this.#shardManager.assignShardId(node);
-                    await node.set(FINGRPRINT_SHARD_ID_KEY, shardId.toString());
-                }
+                await cluster.set(FINGRPRINT_SHARD_ID_KEY, FINGRPRINT_SHARD_ID);
 
                 const handleNodeAdded = this.#debounce(async (node: Redis) => {
                     const { host, port } = node.options;
                     this.emit(NODE_ADDED, `New node detected: ${host}:${port}`);
-                
-                    const shardId = await this.#shardManager.assignShardId(node);
-                    await node.set(FINGRPRINT_SHARD_ID_KEY, shardId.toString());
-                
+
                     const scriptSHA = await this.#loadScript(node);
                     this.emit(SCRIPT_LOADED, `Loaded script on ${host}:${port} with SHA ${scriptSHA}`);
                 }, DEBOUNCE_DELAY);
@@ -527,15 +509,12 @@ export class Fingrprint extends EventEmitter {
                 const handleNodeRemoved = this.#debounce(async (node: Redis) => {
                     const { host, port } = node.options;
                     this.emit(NODE_REMOVED, `Node removed: ${host}:${port}`);
-               
-                    const nodeId = await node.call('CLUSTER', 'MYID') as string;
-                    await this.#shardManager.removeShardId(nodeId);
                 }, DEBOUNCE_DELAY);
                 
                 this.#client.on(CLUSTER_NODE_ADDED, handleNodeAdded);
                 this.#client.on(CLUSTER_NODE_REMOVED, handleNodeRemoved);
 
-                this.emit(CONNECTED, 'Connected and initialized scripts on all cluster masternodes');
+                this.emit(CONNECTED, 'Connected and initialized cluster.');
             } else if(isSentinel) {
                 try {
                     // Get replication info from the master
@@ -615,7 +594,7 @@ export class Fingrprint extends EventEmitter {
                 // First 3 arguments are KEYS:
                 FINGRPRINT_LOCK_KEY,
                 FINGRPRINT_SEQUENCE_KEY,
-                FINGRPRINT_LOGICAL_SHARD_ID_KEY,
+                FINGRPRINT_SHARD_ID_KEY,
                 // Then ARGV:
                 MAX_SEQUENCE,
                 MIN_LOGICAL_SHARD_ID,
@@ -681,12 +660,12 @@ export class Fingrprint extends EventEmitter {
      * Closes the Redis connection.
      */
     async close() {
-        const { DISCONNECTED, ERROR } = FingrprintEvents;
+        const { CONNECT, DISCONNECTED, READY, ERROR } = FingrprintEvents;
         if (this.#client) {
             this.#client.removeAllListeners();
 
             try {
-                if (this.#client.status === 'ready' || this.#client.status === 'connect') {
+                if (this.#client.status === READY || this.#client.status === CONNECT) {
                     await this.#client.quit();
                     this.emit(DISCONNECTED, 'Redis client disconnected gracefully.');
                 } else {
@@ -699,92 +678,5 @@ export class Fingrprint extends EventEmitter {
         } else {
             this.emit(ERROR, { error: new Error('Redis client is not initialized.') });
         }
-    }
-}
-
-/**
- * Events emitted by ClusterShardManager.
- */
-export const ClusterShardManagerEvents = {
-    SHARD_ID_ASSIGNED: 'shardIdAssigned',
-    SHARD_ID_REMOVED: 'shardIdRemoved',
-    ERROR: 'error',
-} as const;
-
-/**
- * Manages shard ID assignments for Redis Cluster nodes.
- */
-class ClusterShardManager extends EventEmitter {
-    #clusterShardIds: Map<string, number> = new Map();
-
-    constructor() {
-        super();
-    }
-
-    /**
-     * Assigns a unique shard ID to a Redis Cluster node.
-     * Ensures that shard IDs are sequential and do not overlap.
-     * Emits the `SHARD_ID_ASSIGNED` event when a new shard ID is assigned.
-     * If the node ID retrieval fails, an `ERROR` event is emitted and `0` is returned.
-     *
-     * @param {Redis} node - The Redis node for which to assign a shard ID.
-     * @returns {Promise<number>} - The assigned shard ID, or `0` if retrieval fails.
-     *
-     * @fires SHARD_ID_ASSIGNED - Emitted when a new shard ID is successfully assigned.
-     * @property {string} nodeId - The ID of the Redis node.
-     * @property {number} shardId - The assigned shard ID.
-     *
-     * @fires ERROR - Emitted if the node ID cannot be retrieved.
-     * @property {Error} error - The error object containing the failure details.
-     */
-    async assignShardId(node: Redis): Promise<number> {
-        const {
-            SHARD_ID_ASSIGNED,
-            ERROR,
-        } = ClusterShardManagerEvents;
-
-        try {
-            const nodeId: string = await node.call('CLUSTER', 'MYID') as string;
-            if (this.#clusterShardIds.has(nodeId)) {
-                return this.#clusterShardIds.get(nodeId)!;
-            }
-
-            const usedShardIds = new Set(this.#clusterShardIds.values());
-            let shardId = 1;
-            while (usedShardIds.has(shardId)) {
-                shardId++;
-            }
-
-            this.#clusterShardIds.set(nodeId, shardId);
-            this.emit(SHARD_ID_ASSIGNED, { nodeId, shardId });
-            return shardId;
-        } catch (err) {
-            const error = new Error(`Failed to retrieve node ID: ${(err as Error).message}`);
-            this.emit(ERROR, { error });
-            throw error;
-        }
-    }
-
-    /**
-     * Removes a shard ID mapping when a node is removed from the cluster.
-     * Emits `shardIdRemoved` event with details.
-     *
-     * @param {string} nodeId - The ID of the removed Redis node.
-     */
-    async removeShardId(nodeId: string) {
-        const { SHARD_ID_REMOVED } = ClusterShardManagerEvents;
-        if (this.#clusterShardIds.has(nodeId)) {
-            this.#clusterShardIds.delete(nodeId);
-            this.emit(SHARD_ID_REMOVED, { nodeId });
-        }
-    }
-
-    /**
-     * Retrieves the current map of assigned shard IDs.
-     *
-     * @returns {Map<string, number>} - A map of Redis node IDs to their assigned shard IDs.
-     */
-    getShardIds(): Map<string, number> {
-        return this.#clusterShardIds;
     }
 }
