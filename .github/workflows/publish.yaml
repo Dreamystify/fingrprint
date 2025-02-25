@@ -70,6 +70,13 @@ jobs:
           else
             echo "gh is already installed: $(gh --version)"
           fi
+      - name: Debug GitHub Environment and Git Remotes
+        run: |
+          echo "GITHUB_REPOSITORY: ${{ github.repository }}"
+          echo "GITHUB_REF: ${{ github.ref }}"
+          echo "GITHUB_SHA: ${{ github.sha }}"
+          echo "Git remote configuration:"
+          git remote -v
       - name: Create GitHub Release with Auto-generated Notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
