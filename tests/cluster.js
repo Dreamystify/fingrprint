@@ -16,6 +16,7 @@ setTimeout(async () => {
   console.log('Configuration:', config);
 
   try {
+    console.log('Initializing Fingrprint...');
     const fingrprint = await Fingrprint.initialize(config);
 
     // Generate a batch of 3 unique IDs.
@@ -28,5 +29,5 @@ setTimeout(async () => {
     console.error('Error connecting to Cluster:', error);
     process.exit(1);
   }
-}, 20000); // wait 20 seconds
+}, 10000); // wait 10 seconds
 
