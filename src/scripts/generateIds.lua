@@ -1,7 +1,3 @@
--- local lock_key = '{fingrprint}-generator-lock'
--- local sequence_key = '{fingrprint}-generator-sequence'
--- local logical_shard_id_key = '{fingrprint}-shard-id'
-
 local lock_key = KEYS[1]
 local sequence_key = KEYS[2]
 local logical_shard_id_key = KEYS[3]
@@ -16,12 +12,16 @@ if redis.call('EXISTS', lock_key) == 1 then
     return redis.error_reply('Fingrprint: Cannot generate ID, waiting for lock to expire.')
 end
 
---[[
-Increment by a set number, this can
---]]
+-- Generate the IDs
 local end_sequence = redis.call('INCRBY', sequence_key, num_ids)
 local start_sequence = end_sequence - num_ids + 1
 local logical_shard_id = tonumber(redis.call('GET', logical_shard_id_key)) or -1
+
+-- Validate logical_shard_id is within the acceptable range
+if logical_shard_id < min_logical_shard_id or logical_shard_id > max_logical_shard_id then
+    redis.log(redis.LOG_NOTICE, 'Fingrprint: Logical shard ID ' .. logical_shard_id .. ' is out of range [' .. min_logical_shard_id .. ', ' .. max_logical_shard_id .. ']')
+    return redis.error_reply('Fingrprint: Logical shard ID out of range')
+end
 
 if end_sequence >= max_sequence then
     redis.log(redis.LOG_NOTICE, 'Fingrprint: Rolling sequence back to the start, locking for 1ms.')
