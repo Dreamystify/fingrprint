@@ -52,28 +52,39 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.DREAMYSTIFY_SLACK_BOT_PACKAGES }}
 
   release:
+    if: ${{ github.actor != 'nektos/act' }}
     name: Create GitHub Release
     needs: build-test
     runs-on: ubuntu-latest
     steps:
-      - name: Check if running locally and skip release job
-        if: ${{ env.ACT == 'true' }}
-        run: |
-          echo "Running locally (ACT is true); skipping release creation."
-          exit 0
       - name: Git checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Fetch all history for all branches and tags
       - name: Checkout main branch
         run: git checkout main
-      - name: Create GitHub Release with Auto-generated Notes
+      - name: Ensure GitHub CLI is installed
+        run: |
+          if ! command -v gh >/dev/null 2>&1; then
+            echo "gh not found. Installing GitHub CLI via apt..."
+            apt update && apt install -y gh
+          else
+            echo "gh is already installed: $(gh --version)"
+          fi
+      - name: Create GitHub Release with Changelog Notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: 1.0.0
         run: |
+          # Extract the section corresponding to the current tag.
+          # This sed command looks for the header starting with "## [<tag>]" and prints until the next header.
+          NOTES=$(sed -n "/^## \[${{ github.ref_name }}\]/,/^## /p" CHANGELOG.md | sed '1d;$d')
+          echo "Extracted release notes:"
+          echo "$NOTES"
           gh release create ${{ github.ref_name }} \
             --repo ${{ github.repository }} \
-            --generate-notes
+            --notes "$NOTES"
 
   publish:
     name: Publish to Npm
