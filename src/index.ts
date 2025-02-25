@@ -459,7 +459,7 @@ export class Fingrprint extends EventEmitter {
             this.#client.once('error', onError);
 
             // Check if the client is already connected or connecting, if so, skip connecting again.
-            const states: string[] = [READY, CONNECTING, CONNECT];
+            const states: string[] = [READY, CONNECTING, CONNECT, RECONNECTING];
             if (!states.includes(this.#client.status)) {
                 this.#client.connect().catch(onError);
             }
