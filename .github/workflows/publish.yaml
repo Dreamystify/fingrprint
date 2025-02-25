@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [20.x]
         redis-version: [7]
     steps:
       - name: Git checkout
@@ -27,7 +27,7 @@ jobs:
         uses: supercharge/redis-github-action@1.4.0
         with:
           redis-version: ${{ matrix.redis-version }}
-          redis-port: 6389
+          redis-port: 6379
           redis-container-name: redis-${{ github.job }}-${{ matrix.node-version }}
       - run: npm ci --ignore-scripts
       - run: npm test
