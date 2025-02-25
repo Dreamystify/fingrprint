@@ -52,7 +52,6 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.DREAMYSTIFY_SLACK_BOT_PACKAGES }}
 
   release:
-    if: ${{ github.actor != 'nektos/act' }}
     name: Create GitHub Release
     needs: build-test
     runs-on: ubuntu-latest
