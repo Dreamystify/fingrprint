@@ -73,7 +73,8 @@ services:
       "--requirepass", "fingrprint"
     ]
     volumes:
-      - ./.data/cluster_node1:/data
+      - type: tmpfs
+        target: /data
     networks:
       - redis_cluster
 
@@ -91,7 +92,8 @@ services:
       "--requirepass", "fingrprint"
     ]
     volumes:
-      - ./.data/cluster_node2:/data
+      - type: tmpfs
+        target: /data
     networks:
       - redis_cluster
 
@@ -109,7 +111,8 @@ services:
       "--requirepass", "fingrprint"
     ]
     volumes:
-      - ./.data/cluster_node3:/data
+      - type: tmpfs
+        target: /data
     networks:
       - redis_cluster
 
