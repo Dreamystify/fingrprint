@@ -18,7 +18,7 @@
 **Prerequisites**
 
 * Node.js v18+
-* Redis v6+ (or a Redis Cluster for distributed mode)
+* Redis v7+ (or a Redis Cluster for distributed mode)
 
 ```sh
 # Initialize the repo (if applicable)
