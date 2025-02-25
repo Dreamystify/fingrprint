@@ -62,6 +62,14 @@ jobs:
           fetch-depth: 0  # Fetch all history for all branches and tags
       - name: Checkout main branch
         run: git checkout main
+      - name: Ensure GitHub CLI is installed
+        run: |
+          if ! command -v gh >/dev/null 2>&1; then
+            echo "gh not found. Installing GitHub CLI..."
+            curl -fsSL https://cli.github.com/packages/install.sh | sh
+          else
+            echo "gh is already installed: $(gh --version)"
+          fi
       - name: Create GitHub Release with Auto-generated Notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
