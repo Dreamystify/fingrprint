@@ -62,11 +62,11 @@ jobs:
           fetch-depth: 0  # Fetch all history for all branches and tags
       - name: Checkout main branch
         run: git checkout main
-      - name: Ensure GitHub CLI is installed
+      - name: Ensure GitHub CLI is installed via apt
         run: |
           if ! command -v gh >/dev/null 2>&1; then
-            echo "gh not found. Installing GitHub CLI..."
-            curl -fsSL https://cli.github.com/packages/install.sh | sh
+            echo "gh not found. Installing GitHub CLI via apt..."
+            apt update && apt install -y gh
           else
             echo "gh is already installed: $(gh --version)"
           fi
