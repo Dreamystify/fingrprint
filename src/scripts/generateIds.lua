@@ -24,9 +24,9 @@ if logical_shard_id < min_logical_shard_id or logical_shard_id > max_logical_sha
 end
 
 if end_sequence >= max_sequence then
-    redis.log(redis.LOG_NOTICE, 'Fingrprint: Rolling sequence back to the start, locking for 1ms.')
+    redis.log(redis.LOG_NOTICE, 'Fingrprint: Rolling sequence back to the start, locking for 500ms.')
     redis.call('SET', sequence_key, '-1')
-    redis.call('PSETEX', lock_key, 1, 'lock')
+    redis.call('PSETEX', lock_key, 500, 'lock')
     end_sequence = max_sequence
 end
 
