@@ -51,7 +51,6 @@ commands:
 
       # act -W .github/workflows/publish.yaml --env-file .env
 
-
   start:
     usage: Up the docker containers
     cmd: |
