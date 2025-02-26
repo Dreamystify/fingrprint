@@ -3,7 +3,7 @@ changelog:
     labels:
       - ignore-for-release
     authors:
-      - dr-evil
+      - corey-lylyk
   categories:
     - title: Breaking Changes 🛠
       labels:

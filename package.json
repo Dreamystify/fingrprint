@@ -12,10 +12,10 @@
   },
   "scripts": {
     "prepublishOnly": "npm run build",
-    "build": "npm run clean && tsc -p .",
+    "build": "npm run clean && tsc -p . && node .scripts/copy-assets.js",
     "watch": "tsc -w -p .",
     "clean": "rm -rf lib",
-    "test": "jest",
+    "test": "jest --runInBand --detectOpenHandles",
     "coverage": "jest --coverage"
   },
   "repository": {
@@ -36,16 +36,9 @@
   "homepage": "https://github.com/Dreamystify/fingrprint#readme",
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.2",
-    "@types/chai": "^5.0.0",
-    "@types/chai-as-promised": "^8.0.1",
     "@types/jest": "^29.5.14",
-    "@types/mocha": "^10.0.1",
     "@types/node": "^22.9.0",
-    "chai": "^5.1.1",
-    "chai-as-promised": "^8.0.0",
-    "codecov": "^3.8.3",
     "jest": "^29.7.0",
-    "mocha": "^10.2.0",
     "nyc": "^17.1.0",
     "source-map-support": "^0.5.21",
     "ts-jest": "^29.2.5",
@@ -54,6 +47,7 @@
   },
   "dependencies": {
     "big-integer": "^1.6.51",
+    "ioredis": "^5.4.2",
     "redis": "^4.6.7"
   }
 }
