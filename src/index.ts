@@ -355,7 +355,10 @@ export class Fingrprint extends EventEmitter {
                     errorMsg = 'No authentication provided.';
                 } else if (message.includes('WRONGPASS')) {
                     errorMsg = 'Invalid username-password pair or user is disabled.';
-                } else if (message.includes('getaddrinfo ENOTFOUND')) {
+                } else if (
+                    message.includes('getaddrinfo ENOTFOUND') ||
+                    message.includes('getaddrinfo EAI_AGAIN invalid-host')
+                ) {
                     errorMsg = 'Invalid host.';
                 } else if (message.includes('getaddrinfo ECONNREFUSED')) {
                     errorMsg = 'Connection refused.';
@@ -444,7 +447,6 @@ export class Fingrprint extends EventEmitter {
 
             const onError = (error: Error) => {
                 cleanup();
-                console.log('Redis error');
                 this.#client.on('error', errorHandler as (...args: any[]) => void);
                 this.#client.disconnect();
                 reject(error);
