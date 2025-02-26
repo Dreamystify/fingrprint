@@ -24,6 +24,9 @@ setTimeout(async () => {
     console.log('Generated IDs:', ids);
     console.log('Test Success');
 
+    // Close connection to release resources
+    await fingrprint.close();
+
     process.exit(0);
   } catch (error) {
     console.error('Error connecting to Cluster:', error);
