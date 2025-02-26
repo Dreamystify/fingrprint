@@ -483,71 +483,66 @@ export class Fingrprint extends EventEmitter {
         } = FingrprintEvents;
         const DEBOUNCE_DELAY = 300;
         
-        try {
-            await this.#initEvents();
+        await this.#initEvents();
 
-            const isCluster = this.#client instanceof Cluster;
-            const isSentinel = !!this.#config.sentinels?.length;
+        const isCluster = this.#client instanceof Cluster;
+        const isSentinel = !!this.#config.sentinels?.length;
 
-            if (isCluster) {
-                const cluster = this.#client as Cluster;
+        if (isCluster) {
+            const cluster = this.#client as Cluster;
 
-                if (cluster.status !== READY) {
-                    await new Promise(resolve => cluster.once('ready', resolve));
-                }
-
-                await cluster.set(FINGRPRINT_SHARD_ID_KEY, FINGRPRINT_SHARD_ID);
-
-                const handleNodeAdded = this.#debounce(async (node: Redis) => {
-                    const { host, port } = node.options;
-                    this.emit(NODE_ADDED, `New node detected: ${host}:${port}`);
-
-                    const scriptSHA = await this.#loadScript(node);
-                    this.emit(SCRIPT_LOADED, `Loaded script on ${host}:${port} with SHA ${scriptSHA}`);
-                }, DEBOUNCE_DELAY);
-
-                const handleNodeRemoved = this.#debounce(async (node: Redis) => {
-                    const { host, port } = node.options;
-                    this.emit(NODE_REMOVED, `Node removed: ${host}:${port}`);
-                }, DEBOUNCE_DELAY);
-                
-                this.#client.on(CLUSTER_NODE_ADDED, handleNodeAdded);
-                this.#client.on(CLUSTER_NODE_REMOVED, handleNodeRemoved);
-
-                this.emit(CONNECTED, 'Connected and initialized cluster.');
-            } else if(isSentinel) {
-                try {
-                    // Get replication info from the master
-                    const info: string = await this.#client.call('INFO', 'replication') as string;
-
-                    // Parse the response into key-value pairs using a concise method
-                    const infoMap = info
-                      .split('\n')
-                      .filter(line => line && line.includes(':'))
-                      .reduce((acc, line) => {
-                        const [key, value] = line.split(':');
-                        acc[key.trim()] = value.trim();
-                        return acc;
-                      }, {} as Record<string, string>);
-               
-                    // If this instance is the master, load the script and set the shard ID
-                    if (infoMap['role'] === 'master') {
-                        const scriptSHA = await this.#loadScript(this.#client as Redis);
-                        await this.#client.set(FINGRPRINT_SHARD_ID_KEY, FINGRPRINT_SHARD_ID);
-                        this.emit(SCRIPT_LOADED, `Loaded script on new Redis master after failover with SHA ${scriptSHA}`);
-                    }
-                } catch (err) {
-                    const error = new Error(`Failed to fetch Redis master info: ${(err as Error).message}`);
-                    this.emit(ERROR, { error });
-                }
-            } else {
-                const scriptSHA = await this.#loadScript(this.#client as Redis);
-                await this.#client.set(FINGRPRINT_SHARD_ID_KEY, FINGRPRINT_SHARD_ID);
-                const { host, port } = this.#config;
-                this.emit(SCRIPT_LOADED, `Loaded script on ${host}:${port} with SHA ${scriptSHA}`);
+            if (cluster.status !== READY) {
+                await new Promise(resolve => cluster.once('ready', resolve));
             }
-        } catch (err: any) {
-            throw err;
+
+            await cluster.set(FINGRPRINT_SHARD_ID_KEY, FINGRPRINT_SHARD_ID);
+
+            const handleNodeAdded = this.#debounce(async (node: Redis) => {
+                const { host, port } = node.options;
+                this.emit(NODE_ADDED, `New node detected: ${host}:${port}`);
+
+                const scriptSHA = await this.#loadScript(node);
+                this.emit(SCRIPT_LOADED, `Loaded script on ${host}:${port} with SHA ${scriptSHA}`);
+            }, DEBOUNCE_DELAY);
+
+            const handleNodeRemoved = this.#debounce(async (node: Redis) => {
+                const { host, port } = node.options;
+                this.emit(NODE_REMOVED, `Node removed: ${host}:${port}`);
+            }, DEBOUNCE_DELAY);
+            
+            this.#client.on(CLUSTER_NODE_ADDED, handleNodeAdded);
+            this.#client.on(CLUSTER_NODE_REMOVED, handleNodeRemoved);
+
+            this.emit(CONNECTED, 'Connected and initialized cluster.');
+        } else if(isSentinel) {
+            try {
+                // Get replication info from the master
+                const info: string = await this.#client.call('INFO', 'replication') as string;
+
+                // Parse the response into key-value pairs using a concise method
+                const infoMap = info
+                    .split('\n')
+                    .filter(line => line && line.includes(':'))
+                    .reduce((acc, line) => {
+                    const [key, value] = line.split(':');
+                    acc[key.trim()] = value.trim();
+                    return acc;
+                    }, {} as Record<string, string>);
+            
+                // If this instance is the master, load the script and set the shard ID
+                if (infoMap['role'] === 'master') {
+                    const scriptSHA = await this.#loadScript(this.#client as Redis);
+                    await this.#client.set(FINGRPRINT_SHARD_ID_KEY, FINGRPRINT_SHARD_ID);
+                    this.emit(SCRIPT_LOADED, `Loaded script on new Redis master after failover with SHA ${scriptSHA}`);
+                }
+            } catch (err) {
+                throw new Error(`Failed to fetch Redis master info: ${(err as Error).message}`);
+            }
+        } else {
+            const scriptSHA = await this.#loadScript(this.#client as Redis);
+            await this.#client.set(FINGRPRINT_SHARD_ID_KEY, FINGRPRINT_SHARD_ID);
+            const { host, port } = this.#config;
+            this.emit(SCRIPT_LOADED, `Loaded script on ${host}:${port} with SHA ${scriptSHA}`);
         }
     }
 
