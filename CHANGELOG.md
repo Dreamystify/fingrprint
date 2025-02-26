@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2025-02-26
+
+### Fixed
+
+- **Redis Connection Error Handling**: Improved robustness by adding support for additional host resolution error cases, preventing failures during Redis connection attempts (e.g., DNS-related issues). ([PR #7](https://github.com/Dreamystify/fingrprint/pull/7))
+
 ## [1.0.0] - 2025-02-25
 
 ### Added
