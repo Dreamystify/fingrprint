@@ -27,7 +27,7 @@ commands:
 
       # Run the workflow
       act -W .github/workflows/publish.yaml \
-      -s DREAMYSTIFY_SLACK_BOT_PACKAGES=$DREAMYSTIFY_SLACK_BOT_PACKAGES \
+      -s SLACK_WEBHOOK_URL=$SLACK_WEBHOOK_URL \
       -s DOCKERHUB_USERNAME=$DOCKERHUB_USERNAME \
       -s DOCKERHUB_TOKEN=$DOCKERHUB_TOKEN
 
