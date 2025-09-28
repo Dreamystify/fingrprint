@@ -1,4 +1,5 @@
 import { Fingrprint, FingrprintEvents } from '../src/index';
+import { readFileSync } from 'fs';
 
 describe('Fingrprint', () => {
     let consoleLogSpy: jest.SpyInstance;
@@ -31,6 +32,13 @@ describe('Fingrprint', () => {
                 // Ignore close errors in tests
             }
             fingrprint = null;
+        }
+    });
+
+    afterAll(async () => {
+        // Ensure all connections are closed at the end
+        if (fingrprint) {
+            await fingrprint.close();
         }
     });
 
@@ -152,7 +160,7 @@ describe('Fingrprint', () => {
 
             it('should handle unknown errors', async () => {
                 // Mock a scenario that would cause an unknown error
-                const originalReadFileSync = require('fs').readFileSync;
+                const originalReadFileSync = readFileSync;
                 const mockReadFileSync = jest.fn(() => {
                     throw new Error('File system error');
                 });

@@ -1,4 +1,4 @@
-const { Fingrprint } = require('../lib/index');
+import { Fingrprint } from '../lib/index.js';
 
 const config = {
   clusterNodes: [
