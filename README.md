@@ -17,7 +17,7 @@
 
 **Prerequisites**
 
-* Node.js v18+
+* Node.js v18+ (ES modules support required)
 * Redis v7+ (or a Redis Cluster for distributed mode)
 
 ```sh
@@ -27,15 +27,23 @@
 
 ## Installation
 
-```js
+```sh
 npm install @dreamystify/fingrprint
 ```
 
-To build the package locally with the TypeScript compiler, run:
+To build the package locally with esbuild, run:
 
-```js
+```sh
 npm run build
 ```
+
+## ES Modules Support
+
+This package is built as an ES module and requires Node.js v18+ with ES modules support. When using this package:
+
+- Use `import` statements instead of `require()`
+- Ensure your `package.json` has `"type": "module"` or use `.mjs` file extensions
+- The package exports are optimized for ES module resolution
 
 ## Usage
 
@@ -43,7 +51,7 @@ The Fingrprint library supports three connection modes: standalone, Sentinel, an
 
 ### Standalone Mode
 
-```js
+```javascript
 import { Fingrprint } from '@dreamystify/fingrprint';
 
 (async () => {
@@ -68,7 +76,7 @@ import { Fingrprint } from '@dreamystify/fingrprint';
 
 ### Sentinel Mode
 
-```js
+```javascript
 import { Fingrprint } from '@dreamystify/fingrprint';
 
 (async () => {
@@ -93,7 +101,7 @@ import { Fingrprint } from '@dreamystify/fingrprint';
 
 ### Cluster Mode
 
-```js
+```javascript
 import { Fingrprint } from '@dreamystify/fingrprint';
 
 (async () => {
@@ -116,7 +124,7 @@ import { Fingrprint } from '@dreamystify/fingrprint';
 
 ### Sharding Configuration
 
-```js
+```javascript
 import { Fingrprint } from '@dreamystify/fingrprint';
 
 (async () => {
@@ -147,7 +155,7 @@ docker run -it --rm --network redis_cluster redis:7.0.2 redis-cli -a yourPasswor
 
 Fingrprint emits events for errors. It is designed to let your application handle logging and error processing in a way that suits your needs. For example:
 
-```js
+```javascript
 fingrprint.on('error', (error) => {
   console.error('Fingrprint error:', error.error);
 });
@@ -187,8 +195,11 @@ fingrprint.on('connect', () => {
 # Start the testing environment
 ahoy start
 
-# Run the tests 
+# Run the tests with coverage
 npm test
+
+# Run tests with coverage reporting
+npm run coverage
 
 # Stop the testing environment
 ahoy stop
