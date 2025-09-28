@@ -251,7 +251,10 @@ export class Fingrprint extends EventEmitter {
         };
 
         // Load the Lua script for generating IDs.
-        this.#generateIdsScript = readFileSync(join(__dirname, 'scripts/generateIds.lua'), 'utf-8');
+        // Use a more compatible approach for ES modules
+        const currentDir = process.cwd();
+        const scriptPath = join(currentDir, 'lib', 'scripts', 'generateIds.lua');
+        this.#generateIdsScript = readFileSync(scriptPath, 'utf-8');
 
 
         if (this.#config.clusterNodes?.length) {
@@ -653,26 +656,39 @@ export class Fingrprint extends EventEmitter {
     }
 
     /**
-     * Closes the Redis connection.
+     * Closes the Redis connection gracefully.
      */
-    async close() {
-        const { CONNECT, DISCONNECTED, READY, ERROR } = FingrprintEvents;
-        if (this.#client) {
-            this.#client.removeAllListeners();
+    async close(): Promise<void> {
+        const { READY, CONNECT, ERROR, DISCONNECTED } = FingrprintEvents;
+        
+        if (!this.#client) {
+            this.emit(ERROR, { 
+                error: new Error('Redis client is not initialized.') 
+            });
+            return;
+        }
 
-            try {
-                if (this.#client.status === READY || this.#client.status === CONNECT) {
-                    await this.#client.quit();
-                    this.emit(DISCONNECTED, 'Redis client disconnected gracefully.');
-                } else {
-                    this.#client.disconnect();
-                    this.emit(DISCONNECTED, 'Redis client disconnected forcefully.');
-                }
-            } catch (err) {
-                this.emit(ERROR, { error: new Error(`Failed to disconnect gracefully: ${err instanceof Error ? err.message : 'Unknown Error'}`) });
+        const client = this.#client;
+        this.#client = null as any;
+        
+        // Remove all event listeners from Redis client
+        client.removeAllListeners();
+
+        try {
+            // Try graceful shutdown
+            if (client.status === READY || client.status === CONNECT) {
+                await client.quit();
             }
-        } else {
-            this.emit(ERROR, { error: new Error('Redis client is not initialized.') });
+        } catch (error) {
+            this.emit(ERROR, { error });
+        } finally {
+            // Always disconnect
+            client.disconnect();
+            
+            this.emit(DISCONNECTED, 'Redis client disconnected.');
+            
+            // Remove all listeners from this EventEmitter instance after emitting
+            this.removeAllListeners();
         }
     }
 }
