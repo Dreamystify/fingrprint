@@ -1,6 +1,6 @@
 {
   "name": "@dreamystify/fingrprint",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "A distributed, k-sortable unique ID generation system using Redis and Lua, inspired by Icicle.",
   "type": "module",
   "main": "lib/index.js",
@@ -69,10 +69,14 @@
   },
   "jest": {
     "preset": "ts-jest/presets/default-esm",
-    "extensionsToTreatAsEsm": [".ts"],
+    "extensionsToTreatAsEsm": [
+      ".ts"
+    ],
     "testEnvironment": "node",
     "testTimeout": 10000,
-    "roots": ["tests"],
+    "roots": [
+      "tests"
+    ],
     "clearMocks": true,
     "coverageProvider": "v8",
     "collectCoverage": true,
@@ -80,9 +84,16 @@
       "src/**/*.ts",
       "!src/**/*.d.ts"
     ],
-    "coveragePathIgnorePatterns": ["/node_modules/"],
+    "coveragePathIgnorePatterns": [
+      "/node_modules/"
+    ],
     "coverageDirectory": "coverage",
-    "coverageReporters": ["json", "text", "lcov", "clover"],
+    "coverageReporters": [
+      "json",
+      "text",
+      "lcov",
+      "clover"
+    ],
     "coverageThreshold": {
       "global": {
         "branches": 75,
@@ -91,12 +102,17 @@
         "statements": 85
       }
     },
-    "testMatch": ["<rootDir>/tests/**/*.spec.ts"],
+    "testMatch": [
+      "<rootDir>/tests/**/*.spec.ts"
+    ],
     "transform": {
-      "^.+\\.ts$": ["ts-jest", {
-        "useESM": true,
-        "tsconfig": "<rootDir>/tsconfig.jest.json"
-      }]
+      "^.+\\.ts$": [
+        "ts-jest",
+        {
+          "useESM": true,
+          "tsconfig": "<rootDir>/tsconfig.jest.json"
+        }
+      ]
     },
     "moduleNameMapper": {
       "^(\\.{1,2}/.*)\\.js$": "$1"
