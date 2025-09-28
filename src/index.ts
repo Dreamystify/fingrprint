@@ -370,7 +370,6 @@ export class Fingrprint extends EventEmitter {
             }
         
             throw new Error(`Failed to initialize: ${errorMsg}`);
-            
         }
     }
 
