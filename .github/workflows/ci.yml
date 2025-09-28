@@ -32,8 +32,14 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Start Redis
+        uses: supercharge/redis-github-action@1.4.0
+        with:
+          redis-version: 7
+          redis-port: 6379
+
       - name: Test
-        run: npm test
+        run: npm run coverage
 
       - name: Check conventional commits
         if: github.event_name == 'pull_request'

@@ -23,7 +23,7 @@
     "build:esbuild": "npm run clean && npx tsx esbuild.config.ts",
     "build:types": "tsc -p tsconfig.build.json",
     "clean": "rm -rf lib",
-    "test": "jest --runInBand --detectOpenHandles",
+    "test": "jest",
     "coverage": "jest --coverage"
   },
   "repository": {
