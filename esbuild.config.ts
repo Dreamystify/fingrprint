@@ -9,6 +9,8 @@
  */
 
 import { build, type BuildOptions } from 'esbuild';
+import { copyFileSync, mkdirSync } from 'fs';
+import { join, dirname } from 'path';
 
 const config: BuildOptions = {
   entryPoints: ['src/index.ts'],
@@ -27,6 +29,12 @@ async function buildLibrary() {
     const startTime = Date.now();
     
     await build(config);
+    
+    // Copy the Lua script to the lib directory
+    const scriptsDir = join('lib', 'scripts');
+    mkdirSync(scriptsDir, { recursive: true });
+    copyFileSync('src/scripts/generateIds.lua', join(scriptsDir, 'generateIds.lua'));
+    console.log(`📄 Copied Lua script to ${scriptsDir}/generateIds.lua`);
     
     const endTime = Date.now();
     const duration = endTime - startTime;
