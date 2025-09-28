@@ -39,6 +39,9 @@ jobs:
           redis-port: 6379
 
       - name: Test
+        run: npm test
+
+      - name: Coverage
         run: npm run coverage
 
       - name: Check conventional commits
