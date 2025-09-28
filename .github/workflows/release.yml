@@ -101,4 +101,4 @@ jobs:
             Workflow: <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>
             ${{ steps.check-release.outputs.new_release == 'true' && format('Version: {0}', steps.check-release.outputs.release_version) || '' }}
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_PACKAGES }} 
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} 
