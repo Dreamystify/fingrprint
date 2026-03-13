@@ -1,3 +1,11 @@
+# ⚠️ Deprecated
+
+This package has been deprecated and replaced by **@dreamystify/kestrel**.
+
+Kestrel provides the same distributed k-sortable ID generation concept with a cleaner and more reliable implementation.
+
+➡️ https://www.npmjs.com/package/@dreamystify/kestrel
+
 <div align="center">
   <br/>
   <img src="./img/logo.png" width="300" />
